@@ -1,5 +1,6 @@
 .env
-
+/bin
+*.code-workspace
 
 HELP.md
 .gradle

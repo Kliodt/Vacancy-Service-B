@@ -1,6 +1,7 @@
 package com.vacancy.organization.service;
 
 import java.util.Set;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -8,7 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
+import com.vacancy.organization.client.VacancyClient;
 
 import com.vacancy.organization.model.Organization;
 import com.vacancy.organization.repository.OrganizationRepository;
@@ -21,10 +22,8 @@ import lombok.RequiredArgsConstructor;
 public class OrganizationServiceImpl implements OrganizationService {
 
     private static final String ORGANIZATION_NOT_FOUND = "Организация не найдена";
-    private static final String VACANCY_SERVICE_URL = "http://vacancy-service/api/vacancies";
-
     private final OrganizationRepository organizationRepository;
-    private final RestTemplate restTemplate;
+    private final VacancyClient vacancyClient;
 
     public Page<Organization> getAllOrganizations(int page, int size) {
         if (size > 50) {
@@ -76,18 +75,24 @@ public class OrganizationServiceImpl implements OrganizationService {
     }
 
     @Transactional
+    @CircuitBreaker(name = "vacancyService", fallbackMethod = "addVacancyToOrganizationFallback")
     public void addVacancyToOrganization(Long organizationId, Long vacancyId) {
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new RuntimeException(ORGANIZATION_NOT_FOUND));
-        
-        // Verify vacancy exists in vacancy service
-        restTemplate.getForObject(VACANCY_SERVICE_URL + "/" + vacancyId, Object.class);
+        // Verify vacancy exists in vacancy service via Feign
+        vacancyClient.getVacancyById(vacancyId);
         
         organization.getVacancyIds().add(vacancyId);
         organizationRepository.save(organization);
     }
 
+    // Resilience4j fallback
+    public void addVacancyToOrganizationFallback(Long organizationId, Long vacancyId, Exception e) {
+        throw new RuntimeException("Внешний сервис вакансий недоступен: " + e.getMessage());
+    }
+
     @Transactional
+    @CircuitBreaker(name = "vacancyService", fallbackMethod = "updateOrganizationVacancyFallback")
     public void updateOrganizationVacancy(Long organizationId, Long vacancyId) {
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new RuntimeException(ORGANIZATION_NOT_FOUND));
@@ -96,8 +101,13 @@ public class OrganizationServiceImpl implements OrganizationService {
             throw new RuntimeException("Вакансия не принадлежит данной организации");
         }
 
-        // Verify vacancy exists in vacancy service
-        restTemplate.getForObject(VACANCY_SERVICE_URL + "/" + vacancyId, Object.class);
+        // Verify vacancy exists in vacancy service via Feign
+        vacancyClient.getVacancyById(vacancyId);
+    }
+
+    // Resilience4j fallback
+    public void updateOrganizationVacancyFallback(Long organizationId, Long vacancyId, Exception e) {
+        throw new RuntimeException("Внешний сервис вакансий недоступен: " + e.getMessage());
     }
 
     @Transactional

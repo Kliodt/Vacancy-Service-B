@@ -10,7 +10,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import com.vacancy.organization.client.VacancyClient;
 
 import java.util.List;
 import java.util.Set;
@@ -22,8 +23,7 @@ public class OrganizationController {
 
     private final OrganizationService organizationService;
     private final ModelMapper modelMapper;
-    private final RestTemplate restTemplate;
-    private static final String VACANCY_SERVICE_URL = "http://vacancy-service/api/vacancies";
+    private final VacancyClient vacancyClient;
 
     @GetMapping
     public ResponseEntity<List<Organization>> getAllOrganizations(
@@ -60,15 +60,18 @@ public class OrganizationController {
     }
 
     @GetMapping("/{orgId}/vacancies")
+    @CircuitBreaker(name = "vacancyService", fallbackMethod = "getOrganizationVacanciesFallback")
     public ResponseEntity<List<Object>> getOrganizationVacancies(@PathVariable Long orgId) {
         Set<Long> vacancyIds = organizationService.getOrganizationVacancyIds(orgId);
         List<Object> vacancies = vacancyIds.stream()
-                .map(id -> restTemplate.getForObject(VACANCY_SERVICE_URL + "/" + id, Object.class))
+                .map(id -> vacancyClient.getVacancyById(id))
                 .toList();
         return ResponseEntity.ok(vacancies);
     }
 
-    @PostMapping("/{orgId}/vacancies/{vacancyId}")
+    public ResponseEntity<List<Object>> getOrganizationVacanciesFallback(Long orgId, Exception e) {
+        return ResponseEntity.ok(List.of());
+    }    @PostMapping("/{orgId}/vacancies/{vacancyId}")
     public ResponseEntity<Void> addVacancyToOrganization(
             @PathVariable Long orgId,
             @PathVariable Long vacancyId) {

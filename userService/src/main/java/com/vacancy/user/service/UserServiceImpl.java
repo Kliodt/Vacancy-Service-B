@@ -9,9 +9,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
+import com.vacancy.user.client.VacancyClient;
 
 import java.util.List;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -20,10 +21,8 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private static final String USER_NOT_FOUND = "Пользователь не найден";
-    private static final String VACANCY_SERVICE_URL = "http://vacancy-service/api/vacancies";
-
     private final UserRepository userRepository;
-    private final RestTemplate restTemplate;
+    private final VacancyClient vacancyClient;
 
     public Page<User> getAllUsers(int page, int size) {
         if (size > 50) {
@@ -71,11 +70,16 @@ public class UserServiceImpl implements UserService {
         return getUserById(id).getFavoriteVacancyIds();
     }
 
+    @CircuitBreaker(name = "vacancyService", fallbackMethod = "getUserFavoritesFallback")
     public List<Object> getUserFavorites(Long id) {
         Set<Long> favoriteIds = getUserFavoriteVacancyIds(id);
         return favoriteIds.stream()
-                .map(vacancyId -> restTemplate.getForObject(VACANCY_SERVICE_URL + "/" + vacancyId, Object.class))
-                .collect(Collectors.toList());
+                .map(vacancyClient::getVacancyById)
+                .toList();
+    }
+
+    public List<Object> getUserFavoritesFallback(Long id, Exception e) {
+        return List.of();
     }
 
     @Transactional(readOnly = true)
@@ -83,21 +87,31 @@ public class UserServiceImpl implements UserService {
         return getUserById(id).getResponseVacancyIds();
     }
 
+    @CircuitBreaker(name = "vacancyService", fallbackMethod = "getUserResponsesFallback")
     public List<Object> getUserResponses(Long id) {
         Set<Long> responseIds = getUserResponseVacancyIds(id);
         return responseIds.stream()
-                .map(vacancyId -> restTemplate.getForObject(VACANCY_SERVICE_URL + "/" + vacancyId, Object.class))
-                .collect(Collectors.toList());
+                .map(vacancyClient::getVacancyById)
+                .toList();
+    }
+
+    public List<Object> getUserResponsesFallback(Long id, Exception e) {
+        return List.of();
     }
 
     @Transactional
+    @CircuitBreaker(name = "vacancyService", fallbackMethod = "addToFavoritesFallback")
     public void addToFavorites(Long userId, Long vacancyId) {
-        // Verify vacancy exists
-        restTemplate.getForObject(VACANCY_SERVICE_URL + "/" + vacancyId, Object.class);
+        // Verify vacancy exists via Feign
+        vacancyClient.getVacancyById(vacancyId);
         
         User user = getUserById(userId);
         user.getFavoriteVacancyIds().add(vacancyId);
         userRepository.save(user);
+    }
+
+    public void addToFavoritesFallback(Long userId, Long vacancyId, Exception e) {
+        throw new RuntimeException("Сервис вакансий недоступен: " + e.getMessage());
     }
 
     @Transactional
@@ -108,13 +122,18 @@ public class UserServiceImpl implements UserService {
     }
 
     @Transactional
+    @CircuitBreaker(name = "vacancyService", fallbackMethod = "respondToVacancyFallback")
     public void respondToVacancy(Long userId, Long vacancyId) {
-        // Verify vacancy exists
-        restTemplate.getForObject(VACANCY_SERVICE_URL + "/" + vacancyId, Object.class);
+        // Verify vacancy exists via Feign
+        vacancyClient.getVacancyById(vacancyId);
         
         User user = getUserById(userId);
         user.getResponseVacancyIds().add(vacancyId);
         userRepository.save(user);
+    }
+
+    public void respondToVacancyFallback(Long userId, Long vacancyId, Exception e) {
+        throw new RuntimeException("Сервис вакансий недоступен: " + e.getMessage());
     }
 
     @Transactional

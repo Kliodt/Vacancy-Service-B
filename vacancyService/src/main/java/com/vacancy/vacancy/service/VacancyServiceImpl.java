@@ -7,7 +7,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
+import com.vacancy.vacancy.client.UserClient;
+import com.vacancy.vacancy.client.OrganizationClient;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
 import com.vacancy.vacancy.model.UserVacancyResponse;
 import com.vacancy.vacancy.model.Vacancy;
@@ -22,9 +24,8 @@ public class VacancyServiceImpl implements VacancyService {
 
     private final VacancyRepository vacancyRepository;
     private final UserVacancyResponseRepository responseRepository;
-    private final RestTemplate restTemplate;
-
-    private static final String USER_SERVICE_URL = "http://user-service/api/users";
+    private final UserClient userClient;
+    private final OrganizationClient organizationClient;
 
     public Page<Vacancy> getAllVacancies(int page, int size) {
         if (size > 50) {
@@ -43,13 +44,16 @@ public class VacancyServiceImpl implements VacancyService {
         vacancyRepository.deleteById(id);
     }
 
+    @CircuitBreaker(name = "userService", fallbackMethod = "respondToVacancyFallback")
     @Transactional
     public void respondToVacancy(Long vacancyId, Long userId) {
-        // Verify user exists
-        restTemplate.getForObject(USER_SERVICE_URL + "/" + userId, Object.class);
-        // Verify vacancy exists
+        userClient.getUserById(userId);
         getVacancyById(vacancyId);
         responseRepository.save(new UserVacancyResponse(userId, vacancyId));
+    }
+
+    public void respondToVacancyFallback(Long vacancyId, Long userId, Exception e) {
+        throw new RuntimeException("Сервис пользователей недоступен: " + e.getMessage());
     }
 
     @Transactional
@@ -59,8 +63,7 @@ public class VacancyServiceImpl implements VacancyService {
 
     public Vacancy saveVacancy(Vacancy vacancy) {
         if (vacancy.getOrganizationId() != null) {
-            // Verify organization exists
-            restTemplate.getForObject("http://organization-service/api/organizations/" + vacancy.getOrganizationId(), Object.class);
+            organizationClient.getOrganizationById(vacancy.getOrganizationId());
         }
         return vacancyRepository.save(vacancy);
     }

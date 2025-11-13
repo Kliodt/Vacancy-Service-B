@@ -5,9 +5,12 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.vacancy.vacancy.client.UserClient;
+import com.vacancy.vacancy.exceptions.RequestException;
+import com.vacancy.vacancy.exceptions.ServiceException;
 import com.vacancy.vacancy.client.OrganizationClient;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
@@ -37,7 +40,7 @@ public class VacancyServiceImpl implements VacancyService {
 
     public Vacancy getVacancyById(Long id) {
         return vacancyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Вакансия не найдена"));
+                .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена"));
     }
 
     public void deleteVacancy(Long id) {
@@ -52,8 +55,8 @@ public class VacancyServiceImpl implements VacancyService {
         responseRepository.save(new UserVacancyResponse(userId, vacancyId));
     }
 
-    public void respondToVacancyFallback(Long vacancyId, Long userId, Exception e) {
-        throw new RuntimeException("Сервис пользователей недоступен: " + e.getMessage());
+    public void respondToVacancyFallback() {
+        throw new ServiceException("Сервис пользователей недоступен");
     }
 
     @Transactional

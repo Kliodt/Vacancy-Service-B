@@ -5,6 +5,7 @@ import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 
+import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.vacancy.vacancy.model.Vacancy;
+import com.vacancy.vacancy.model.dto.VacancyDtoIn;
 import com.vacancy.vacancy.model.UserVacancyResponse;
 import com.vacancy.vacancy.service.VacancyService;
 
@@ -23,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class VacancyController {
 
     private final VacancyService vacancyService;
+    private final ModelMapper modelMapper = new ModelMapper();
 
     @Operation(
             summary = "Получить все вакансии",
@@ -47,16 +50,18 @@ public class VacancyController {
     }
 
     @PostMapping
-    public ResponseEntity<Vacancy> createVacancy(@Valid @RequestBody Vacancy vacancy) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(vacancyService.saveVacancy(vacancy));
+    public ResponseEntity<Vacancy> createVacancy(@Valid @RequestBody VacancyDtoIn vacancy) {
+        Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
+        return ResponseEntity.status(HttpStatus.CREATED).body(vacancyService.saveVacancy(vac));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Vacancy> updateVacancy(
             @PathVariable Long id,
-            @Valid @RequestBody Vacancy vacancy) {
-        vacancy.setId(id);
-        return ResponseEntity.ok(vacancyService.saveVacancy(vacancy));
+            @Valid @RequestBody VacancyDtoIn vacancy) {
+        Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
+        vac.setId(id);
+        return ResponseEntity.ok(vacancyService.saveVacancy(vac));
     }
 
     @DeleteMapping("/{id}")

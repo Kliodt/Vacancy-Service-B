@@ -1,23 +1,24 @@
 package com.vacancy.user.service;
 
 import com.vacancy.user.model.User;
-import org.springframework.data.domain.Page;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Set;
 
 public interface UserService {
-    Page<User> getAllUsers(int page, int size);
-    User getUserById(Long id);
-    User createUser(User user);
-    User updateUser(Long id, User user);
-    void deleteUser(Long id);
-    Set<Long> getUserFavoriteVacancyIds(Long id);
-    List<Object> getUserFavorites(Long id);
-    Set<Long> getUserResponseVacancyIds(Long id);
-    List<Object> getUserResponses(Long id);
-    void addToFavorites(Long userId, Long vacancyId);
-    void removeFromFavorites(Long userId, Long vacancyId);
-    void respondToVacancy(Long userId, Long vacancyId);
-    void removeResponseFromVacancy(Long userId, Long vacancyId);
+    Flux<User> getAllUsers(int page, int size);
+    Mono<User> getUserById(Long id);
+    Mono<User> createUser(User user);
+    Mono<User> updateUser(Long id, User user);
+    Mono<Void> deleteUser(Long id);
+    Mono<Set<Long>> getUserFavoriteVacancyIds(Long id);
+    Mono<List<Object>> getUserFavorites(Long id);
+    Mono<Set<Long>> getUserResponseVacancyIds(Long id);
+    Mono<List<Object>> getUserResponses(Long id);
+    Mono<Void> addToFavorites(Long userId, Long vacancyId);
+    Mono<Void> removeFromFavorites(Long userId, Long vacancyId);
+    Mono<Void> respondToVacancy(Long userId, Long vacancyId);
+    Mono<Void> removeResponseFromVacancy(Long userId, Long vacancyId);
 }

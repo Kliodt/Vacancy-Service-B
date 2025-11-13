@@ -4,142 +4,170 @@ import com.vacancy.user.model.User;
 import com.vacancy.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import com.vacancy.user.client.VacancyClient;
+import com.vacancy.user.exceptions.RequestException;
+import com.vacancy.user.exceptions.ServiceException;
 
 import java.util.List;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.util.Set;
-import java.util.stream.Collectors;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
+    
     private static final String USER_NOT_FOUND = "Пользователь не найден";
+    private static final String VACANCY_SERVICE_NOT_AVAILABLE = "Сервис вакансий недоступен";
+
     private final UserRepository userRepository;
     private final VacancyClient vacancyClient;
 
-    public Page<User> getAllUsers(int page, int size) {
-        if (size > 50) {
-            size = 50;
-        }
-        Pageable pageable = PageRequest.of(page, size);
-        return userRepository.findAll(pageable);
-    }
-
-    public User getUserById(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND));
-    }
-
-    public User createUser(User user) {
-        if (userRepository.findUserByEmail(user.getEmail()) != null) {
-            throw new RuntimeException("Пользователь с таким email уже зарегистрирован");
-        }
-        user.setId(0L);
-        return userRepository.save(user);
-    }
-
-    @Transactional
-    public User updateUser(Long id, User user) {
-        User existingUser = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND));
-
-        if (userRepository.findUserByEmail(user.getEmail()) != null && !existingUser.getEmail().equals(user.getEmail())) {
-            throw new RuntimeException("С таким email уже зарегистрирован другой пользователь");
-        }
-
-        existingUser.setNickname(user.getNickname());
-        existingUser.setEmail(user.getEmail());
-        existingUser.setCvLink(user.getCvLink());
+    public Flux<User> getAllUsers(int page, int size) {
+        if (size > 50) size = 50;
+        int skip = page * size;
         
-        return userRepository.save(existingUser);
+        return Mono.fromCallable(userRepository::findAll)
+                .flatMapMany(Flux::fromIterable)
+                .skip(skip)
+                .take(size)
+                .subscribeOn(Schedulers.boundedElastic());
     }
 
-    public void deleteUser(Long id) {
-        userRepository.deleteById(id);
+    public Mono<User> getUserById(Long id) {
+        return Mono.fromCallable(() -> userRepository.findById(id)
+                .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND)))
+                .subscribeOn(Schedulers.boundedElastic());
     }
 
-    @Transactional(readOnly = true)
-    public Set<Long> getUserFavoriteVacancyIds(Long id) {
-        return getUserById(id).getFavoriteVacancyIds();
+    public Mono<User> createUser(User user) {
+        return Mono.fromCallable(() -> {
+                    if (userRepository.findUserByEmail(user.getEmail()) != null) {
+                        throw new RequestException(HttpStatus.CONFLICT, "Пользователь с таким email уже зарегистрирован");
+                    }
+                    user.setId(0L);
+                    return userRepository.save(user);
+                })
+                .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    public Mono<User> updateUser(Long id, User user) {
+        return Mono.fromCallable(() -> {
+                    User existingUser = userRepository.findById(id)
+                            .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND));
+
+                    if (userRepository.findUserByEmail(user.getEmail()) != null && !existingUser.getEmail().equals(user.getEmail())) {
+                        throw new RequestException(HttpStatus.CONFLICT, "С таким email уже зарегистрирован другой пользователь");
+                    }
+
+                    existingUser.setNickname(user.getNickname());
+                    existingUser.setEmail(user.getEmail());
+                    existingUser.setCvLink(user.getCvLink());
+                    
+                    return userRepository.save(existingUser);
+                })
+                .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    public Mono<Void> deleteUser(Long id) {
+        return Mono.fromRunnable(() -> userRepository.deleteById(id))
+                .subscribeOn(Schedulers.boundedElastic())
+                .then();
+    }
+
+    public Mono<Set<Long>> getUserFavoriteVacancyIds(Long id) {
+        return getUserById(id)
+                .map(User::getFavoriteVacancyIds);
     }
 
     @CircuitBreaker(name = "vacancyService", fallbackMethod = "getUserFavoritesFallback")
-    public List<Object> getUserFavorites(Long id) {
-        Set<Long> favoriteIds = getUserFavoriteVacancyIds(id);
-        return favoriteIds.stream()
-                .map(vacancyClient::getVacancyById)
-                .toList();
+    public Mono<List<Object>> getUserFavorites(Long id) {
+        return getUserFavoriteVacancyIds(id)
+                .flatMapMany(Flux::fromIterable)
+                .flatMap(vacancyId -> Mono.fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
+                        .subscribeOn(Schedulers.boundedElastic()))
+                .collectList();
     }
 
-    public List<Object> getUserFavoritesFallback(Long id, Exception e) {
-        return List.of();
+    public Mono<List<Object>> getUserFavoritesFallback() {
+        return Mono.error(new ServiceException(VACANCY_SERVICE_NOT_AVAILABLE));
     }
 
-    @Transactional(readOnly = true)
-    public Set<Long> getUserResponseVacancyIds(Long id) {
-        return getUserById(id).getResponseVacancyIds();
+    public Mono<Set<Long>> getUserResponseVacancyIds(Long id) {
+        return getUserById(id)
+                .map(User::getResponseVacancyIds);
     }
 
     @CircuitBreaker(name = "vacancyService", fallbackMethod = "getUserResponsesFallback")
-    public List<Object> getUserResponses(Long id) {
-        Set<Long> responseIds = getUserResponseVacancyIds(id);
-        return responseIds.stream()
-                .map(vacancyClient::getVacancyById)
-                .toList();
+    public Mono<List<Object>> getUserResponses(Long id) {
+        return getUserResponseVacancyIds(id)
+                .flatMapMany(Flux::fromIterable)
+                .flatMap(vacancyId -> Mono.fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
+                        .subscribeOn(Schedulers.boundedElastic()))
+                .collectList();
     }
 
-    public List<Object> getUserResponsesFallback(Long id, Exception e) {
-        return List.of();
+    public Mono<List<Object>> getUserResponsesFallback() {
+        return Mono.error(new ServiceException(VACANCY_SERVICE_NOT_AVAILABLE));
     }
 
-    @Transactional
     @CircuitBreaker(name = "vacancyService", fallbackMethod = "addToFavoritesFallback")
-    public void addToFavorites(Long userId, Long vacancyId) {
-        // Verify vacancy exists via Feign
-        vacancyClient.getVacancyById(vacancyId);
-        
-        User user = getUserById(userId);
-        user.getFavoriteVacancyIds().add(vacancyId);
-        userRepository.save(user);
+    public Mono<Void> addToFavorites(Long userId, Long vacancyId) {
+        return Mono.fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
+                .subscribeOn(Schedulers.boundedElastic())
+                .then(getUserById(userId))
+                .flatMap(user -> Mono.fromCallable(() -> {
+                            user.getFavoriteVacancyIds().add(vacancyId);
+                            return userRepository.save(user);
+                        })
+                        .subscribeOn(Schedulers.boundedElastic()))
+                .then();
     }
 
-    public void addToFavoritesFallback(Long userId, Long vacancyId, Exception e) {
-        throw new RuntimeException("Сервис вакансий недоступен: " + e.getMessage());
+    public Mono<Void> addToFavoritesFallback() {
+        return Mono.error(new ServiceException(VACANCY_SERVICE_NOT_AVAILABLE));
     }
 
-    @Transactional
-    public void removeFromFavorites(Long userId, Long vacancyId) {
-        User user = getUserById(userId);
-        user.getFavoriteVacancyIds().remove(vacancyId);
-        userRepository.save(user);
+    public Mono<Void> removeFromFavorites(Long userId, Long vacancyId) {
+        return getUserById(userId)
+                .flatMap(user -> Mono.fromCallable(() -> {
+                            user.getFavoriteVacancyIds().remove(vacancyId);
+                            return userRepository.save(user);
+                        })
+                        .subscribeOn(Schedulers.boundedElastic()))
+                .then();
     }
 
-    @Transactional
     @CircuitBreaker(name = "vacancyService", fallbackMethod = "respondToVacancyFallback")
-    public void respondToVacancy(Long userId, Long vacancyId) {
-        // Verify vacancy exists via Feign
-        vacancyClient.getVacancyById(vacancyId);
-        
-        User user = getUserById(userId);
-        user.getResponseVacancyIds().add(vacancyId);
-        userRepository.save(user);
+    public Mono<Void> respondToVacancy(Long userId, Long vacancyId) {
+        return Mono.fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
+                .subscribeOn(Schedulers.boundedElastic())
+                .then(getUserById(userId))
+                .flatMap(user -> Mono.fromCallable(() -> {
+                            user.getResponseVacancyIds().add(vacancyId);
+                            return userRepository.save(user);
+                        })
+                        .subscribeOn(Schedulers.boundedElastic()))
+                .then();
     }
 
-    public void respondToVacancyFallback(Long userId, Long vacancyId, Exception e) {
-        throw new RuntimeException("Сервис вакансий недоступен: " + e.getMessage());
+    public Mono<Void> respondToVacancyFallback() {
+        return Mono.error(new ServiceException(VACANCY_SERVICE_NOT_AVAILABLE));
     }
 
-    @Transactional
-    public void removeResponseFromVacancy(Long userId, Long vacancyId) {
-        User user = getUserById(userId);
-        user.getResponseVacancyIds().remove(vacancyId);
-        userRepository.save(user);
+    public Mono<Void> removeResponseFromVacancy(Long userId, Long vacancyId) {
+        return getUserById(userId)
+                .flatMap(user -> Mono.fromCallable(() -> {
+                            user.getResponseVacancyIds().remove(vacancyId);
+                            return userRepository.save(user);
+                        })
+                        .subscribeOn(Schedulers.boundedElastic()))
+                .then();
     }
 }
+

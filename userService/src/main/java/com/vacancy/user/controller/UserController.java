@@ -1,14 +1,18 @@
 package com.vacancy.user.controller;
 
 import com.vacancy.user.model.User;
+import com.vacancy.user.model.dto.UserDtoIn;
+import com.vacancy.user.model.dto.UserDtoOut;
 import com.vacancy.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.http.HttpHeaders;
+
+import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Set;
@@ -19,82 +23,88 @@ import java.util.Set;
 public class UserController {
 
     private final UserService userService;
+    private final ModelMapper modelMapper = new ModelMapper();
 
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers(
+    public Flux<UserDtoOut> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
-        Page<User> userPage = userService.getAllUsers(page, size);
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("X-Total-Count", String.valueOf(userPage.getTotalElements()));
-        return ResponseEntity.ok().headers(headers).body(userPage.getContent());
+        return userService.getAllUsers(page, size)
+                .map(user -> modelMapper.map(user, UserDtoOut.class));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
-        User user = userService.getUserById(id);
-        return ResponseEntity.ok(user);
+    public Mono<ResponseEntity<UserDtoOut>> getUserById(@PathVariable Long id) {
+        return userService.getUserById(id)
+                .map(usr -> modelMapper.map(usr, UserDtoOut.class))
+                .map(ResponseEntity::ok);
     }
 
     @PostMapping
-    public ResponseEntity<User> createUser(@Valid @RequestBody User user) {
-        User savedUser = userService.createUser(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
+    public Mono<ResponseEntity<UserDtoOut>> createUser(@Valid @RequestBody UserDtoIn user) {
+        return userService.createUser(modelMapper.map(user, User.class))
+                .map(usr -> modelMapper.map(usr, UserDtoOut.class))
+                .map(saved -> ResponseEntity.status(HttpStatus.CREATED).body(saved));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Long id, @Valid @RequestBody User user) {
-        User updatedUser = userService.updateUser(id, user);
-        return ResponseEntity.ok(updatedUser);
+    public Mono<ResponseEntity<UserDtoOut>> updateUser(@PathVariable Long id, @Valid @RequestBody UserDtoIn user) {
+        return userService.updateUser(id, modelMapper.map(user, User.class))
+                .map(usr -> modelMapper.map(usr, UserDtoOut.class))
+                .map(ResponseEntity::ok);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        userService.deleteUser(id);
-        return ResponseEntity.noContent().build();
+    public Mono<ResponseEntity<Void>> deleteUser(@PathVariable Long id) {
+        return userService.deleteUser(id)
+                .thenReturn(ResponseEntity.noContent().build());
     }
 
     @GetMapping("/{id}/favorites")
-    public ResponseEntity<List<Object>> getUserFavorites(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.getUserFavorites(id));
+    public Mono<ResponseEntity<List<Object>>> getUserFavorites(@PathVariable Long id) {
+        return userService.getUserFavorites(id)
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/{id}/favorites/ids")
-    public ResponseEntity<Set<Long>> getUserFavoriteIds(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.getUserFavoriteVacancyIds(id));
+    public Mono<ResponseEntity<Set<Long>>> getUserFavoriteIds(@PathVariable Long id) {
+        return userService.getUserFavoriteVacancyIds(id)
+                .map(ResponseEntity::ok);
     }
 
     @PutMapping("/{userId}/favorite/{vacancyId}")
-    public ResponseEntity<Void> addToFavorites(@PathVariable Long userId, @PathVariable Long vacancyId) {
-        userService.addToFavorites(userId, vacancyId);
-        return ResponseEntity.ok().build();
+    public Mono<ResponseEntity<Void>> addToFavorites(@PathVariable Long userId, @PathVariable Long vacancyId) {
+        return userService.addToFavorites(userId, vacancyId)
+                .thenReturn(ResponseEntity.ok().build());
     }
 
     @DeleteMapping("/{userId}/favorite/{vacancyId}")
-    public ResponseEntity<Void> removeFromFavorites(@PathVariable Long userId, @PathVariable Long vacancyId) {
-        userService.removeFromFavorites(userId, vacancyId);
-        return ResponseEntity.ok().build();
+    public Mono<ResponseEntity<Void>> removeFromFavorites(@PathVariable Long userId, @PathVariable Long vacancyId) {
+        return userService.removeFromFavorites(userId, vacancyId)
+                .thenReturn(ResponseEntity.ok().build());
     }
 
     @GetMapping("/{userId}/responses")
-    public ResponseEntity<List<Object>> getUserResponses(@PathVariable Long userId) {
-        return ResponseEntity.ok(userService.getUserResponses(userId));
+    public Mono<ResponseEntity<List<Object>>> getUserResponses(@PathVariable Long userId) {
+        return userService.getUserResponses(userId)
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/{userId}/responses/ids")
-    public ResponseEntity<Set<Long>> getUserResponseIds(@PathVariable Long userId) {
-        return ResponseEntity.ok(userService.getUserResponseVacancyIds(userId));
+    public Mono<ResponseEntity<Set<Long>>> getUserResponseIds(@PathVariable Long userId) {
+        return userService.getUserResponseVacancyIds(userId)
+                .map(ResponseEntity::ok);
     }
 
     @PutMapping("/{userId}/respond/{vacancyId}")
-    public ResponseEntity<Void> respondToVacancy(@PathVariable Long userId, @PathVariable Long vacancyId) {
-        userService.respondToVacancy(userId, vacancyId);
-        return ResponseEntity.ok().build();
+    public Mono<ResponseEntity<Void>> respondToVacancy(@PathVariable Long userId, @PathVariable Long vacancyId) {
+        return userService.respondToVacancy(userId, vacancyId)
+                .thenReturn(ResponseEntity.ok().build());
     }
 
     @DeleteMapping("/{userId}/respond/{vacancyId}")
-    public ResponseEntity<Void> removeResponseFromVacancy(@PathVariable Long userId, @PathVariable Long vacancyId) {
-        userService.removeResponseFromVacancy(userId, vacancyId);
-        return ResponseEntity.ok().build();
+    public Mono<ResponseEntity<Void>> removeResponseFromVacancy(@PathVariable Long userId, @PathVariable Long vacancyId) {
+        return userService.removeResponseFromVacancy(userId, vacancyId)
+                .thenReturn(ResponseEntity.ok().build());
     }
 }

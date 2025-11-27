@@ -4,6 +4,9 @@ spring:
   application:
     name: gateway-service
   cloud:
+    config:
+      uri: http://localhost:8888
+      fail-fast: true
     gateway:
       discovery:
         locator:
@@ -22,8 +25,4 @@ spring:
           uri: lb://vacancy-service
           predicates:
             - Path=/vacancy/**
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
 

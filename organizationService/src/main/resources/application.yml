@@ -6,10 +6,7 @@ server:
 spring:
   application:
     name: organization-service
-  cloud:
-    config:
-      uri: http://localhost:8888
-      fail-fast: true
+
   r2dbc:
     # url: r2dbc:postgresql://localhost:5432/vacancy
     url: ${DB_URL}

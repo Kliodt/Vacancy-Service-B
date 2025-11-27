@@ -3,24 +3,20 @@ server:
 spring:
   application:
     name: vacancy-service
-  cloud:
-    config:
-      uri: http://localhost:8888
-      fail-fast: true
+    
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASS}
 
-    datasource:
-      driver-class-name: org.postgresql.Driver
-      url: ${DB_URL}
-      username: ${DB_USER}
-      password: ${DB_PASS}
-  
-    jpa:
-      show-sql: true
-      hibernate:
-        ddl-auto: update #todo: update -> validate
-  
-    # flyway:
-    #   enabled: true
-    #   url: ${DB_URL}
-    #   user: ${DB_USER}
-    #   password: ${DB_PASS}
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update #todo: update -> validate
+
+  # flyway:
+  #   enabled: true
+  #   url: ${DB_URL}
+  #   user: ${DB_USER}
+  #   password: ${DB_PASS}

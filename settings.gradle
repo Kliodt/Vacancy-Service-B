@@ -1,5 +1,0 @@
-rootProject.name = 'demo'
-
-include ':organizationService'
-include ':userService'
-include ':vacancyService'

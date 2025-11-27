@@ -7,11 +7,20 @@ spring:
     config:
       uri: http://localhost:8888
       fail-fast: true
-  datasource:
-    url: jdbc:postgresql://localhost:5432/vacancy_db
-    username: postgres
-    password: postgres
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
+
+    datasource:
+      driver-class-name: org.postgresql.Driver
+      url: ${DB_URL}
+      username: ${DB_USER}
+      password: ${DB_PASS}
+  
+    jpa:
+      show-sql: true
+      hibernate:
+        ddl-auto: update #todo: update -> validate
+  
+    # flyway:
+    #   enabled: true
+    #   url: ${DB_URL}
+    #   user: ${DB_USER}
+    #   password: ${DB_PASS}

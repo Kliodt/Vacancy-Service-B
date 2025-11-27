@@ -1,3 +1,8 @@
+
+server:
+  port: 8081
+
+
 spring:
   application:
     name: organization-service
@@ -6,14 +11,17 @@ spring:
       uri: http://localhost:8888
       fail-fast: true
   r2dbc:
-    url: r2dbc:postgresql://localhost:5432/vacancy
-    username: postgres
-    password: postgres
+    # url: r2dbc:postgresql://localhost:5432/vacancy
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
     out-of-order: false
+    url: ${DB_URL}
+    user: ${DB_USER}
+    password: ${DB_PASS}
 
-server:
-  port: 8081

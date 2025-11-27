@@ -1,43 +1,122 @@
+version: '3.8'
+
 services:
 
-  db:
-    image: postgres:17
-    restart: always
-
-    container_name: vacancy_app_database_container
-
-    shm_size: 128mb
-
+  config-server:
+    image: config-server:latest
+    container_name: config_server_container
     ports:
-      - "5432:5432"
+      - "8888:8888"
+    restart: no
 
-    env_file:
-      - .env
+  eureka-server:
+    image: eureka-server:latest
+    container_name: eureka_server_container
+    ports:
+      - "8761:8761"
+    restart: no
 
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
-      POSTGRES_DB: vacancies_001
-      PGDATA: /var/lib/postgresql/data
-
-    volumes:
-      - vacancy_app_database:/var/lib/postgresql/data
-
-
-  app:
-    image: vacancy_app:latest
-    container_name: vacancy_app_container
+  gateway-service:
+    image: gateway-service:latest
+    container_name: gateway_service_container
     ports:
       - "8080:8080"
+    restart: no
+    depends_on:
+      - eureka-server
+      - config-server
 
-    restart: always
+  organization-service:
+    image: organization-service:latest
+    container_name: organization_service_container
+    ports:
+      - "8081:8081"
+    restart: no
+    depends_on:
+      - eureka-server
+      - config-server
+      - organization-db
+    environment:
+      DB_URL: r2dbc:postgresql://organization-db:5432/${DB_ORG_NAME}
+      DB_USER: ${DB_ORG_USER}
+      DB_PASS: ${DB_ORG_PASS}
 
+  organization-db:
+    image: postgres:17
+    container_name: organization_db_container
+    restart: no
+    ports:
+      - "5433:5432"
     env_file:
       - .env
+    environment:
+      POSTGRES_USER: ${DB_ORG_USER}
+      POSTGRES_PASSWORD: ${DB_ORG_PASS}
+      POSTGRES_DB: ${DB_ORG_NAME}
+    volumes:
+      - organization_db_data:/var/lib/postgresql/data
 
+  user-service:
+    image: user-service:latest
+    container_name: user_service_container
+    ports:
+      - "8082:8082"
+    restart: no
     depends_on:
-      - db
+      - eureka-server
+      - config-server
+      - user-db
+    environment:
+      DB_URL: jdbc:postgresql://user-db:5432/${DB_USER_NAME}
+      DB_USER: ${DB_USER_USER}
+      DB_PASS: ${DB_USER_PASS}
 
+  user-db:
+    image: postgres:17
+    container_name: user_db_container
+    restart: no
+    ports:
+      - "5434:5432"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_USER_USER}
+      POSTGRES_PASSWORD: ${DB_USER_PASS}
+      POSTGRES_DB: ${DB_USER_NAME}
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+
+  vacancy-service:
+    image: vacancy-service:latest
+    container_name: vacancy_service_container
+    ports:
+      - "8083:8083"
+    restart: no
+    depends_on:
+      - eureka-server
+      - config-server
+      - vacancy-db
+    environment:
+      DB_URL: jdbc:postgresql://vacancy-db:5432/${DB_VACANCY_NAME}
+      DB_USER: ${DB_VACANCY_USER}
+      DB_PASS: ${DB_VACANCY_PASS}
+
+  vacancy-db:
+    image: postgres:17
+    container_name: vacancy_db_container
+    restart: no
+    ports:
+      - "5435:5432"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_VACANCY_USER}
+      POSTGRES_PASSWORD: ${DB_VACANCY_PASS}
+      POSTGRES_DB: ${DB_VACANCY_NAME}
+    volumes:
+      - vacancy_db_data:/var/lib/postgresql/data
 
 volumes:
-  vacancy_app_database:
+  organization_db_data:
+  user_db_data:
+  vacancy_db_data:

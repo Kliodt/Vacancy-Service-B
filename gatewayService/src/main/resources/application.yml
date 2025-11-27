@@ -1,28 +1,33 @@
 server:
   port: 8080
+
 spring:
   application:
     name: gateway-service
+
   cloud:
     config:
       uri: http://localhost:8888
       fail-fast: true
+
     gateway:
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
-      routes:
-        - id: organization-service
-          uri: lb://organization-service
-          predicates:
-            - Path=/organization/**
-        - id: user-service
-          uri: lb://user-service
-          predicates:
-            - Path=/user/**
-        - id: vacancy-service
-          uri: lb://vacancy-service
-          predicates:
-            - Path=/vacancy/**
+      server:
+        discovery:
+          locator:
+            enabled: true
+            lower-case-service-id: true
+        webflux:
+          routes:
+          - id: organization-service
+            uri: lb://organization-service
+            predicates:
+              - Path=/organization/**
+          - id: user-service
+            uri: lb://user-service
+            predicates:
+              - Path=/user/**
+          - id: vacancy-service
+            uri: lb://vacancy-service
+            predicates:
+              - Path=/vacancy/**
 

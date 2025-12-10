@@ -1,6 +1,7 @@
 .env
 /bin
 *.code-workspace
+build_all.bat
 
 HELP.md
 .gradle

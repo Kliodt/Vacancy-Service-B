@@ -4,30 +4,29 @@ server:
 spring:
   application:
     name: gateway-service
-
   cloud:
-    config:
-      uri: http://localhost:8888
-      fail-fast: true
-
     gateway:
-      server:
-        discovery:
-          locator:
-            enabled: true
-            lower-case-service-id: true
-        webflux:
-          routes:
-          - id: organization-service
-            uri: lb://organization-service
-            predicates:
-              - Path=/organization/**
-          - id: user-service
-            uri: lb://user-service
-            predicates:
-              - Path=/user/**
-          - id: vacancy-service
-            uri: lb://vacancy-service
-            predicates:
-              - Path=/vacancy/**
+      routes:
+        - id: organization-service
+          uri: http://organization-service:8081
+          predicates:
+            - Path=/organization/**
+          filters:
+            - StripPrefix=1
+        - id: user-service
+          uri: http://user-service:8082
+          predicates:
+            - Path=/user/**
+          filters:
+            - StripPrefix=1
+        - id: vacancy-service
+          uri: http://vacancy-service:8083
+          predicates:
+            - Path=/vacancy/**
+          filters:
+            - StripPrefix=1
 
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/

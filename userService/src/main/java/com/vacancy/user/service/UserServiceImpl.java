@@ -1,18 +1,19 @@
 package com.vacancy.user.service;
 
-import com.vacancy.user.model.User;
-import com.vacancy.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+import java.util.Set;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+
 import com.vacancy.user.client.VacancyClient;
 import com.vacancy.user.exceptions.RequestException;
 import com.vacancy.user.exceptions.ServiceException;
+import com.vacancy.user.model.User;
+import com.vacancy.user.repository.UserRepository;
 
-import java.util.List;
-import java.util.Set;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -39,7 +40,7 @@ public class UserServiceImpl implements UserService {
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
-    public Mono<User> getUserById(Long id) {
+    public Mono<User> getUserById(long id) {
         return Mono.fromCallable(() -> userRepository.findById(id)
                 .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND)))
                 .subscribeOn(Schedulers.boundedElastic());
@@ -56,7 +57,7 @@ public class UserServiceImpl implements UserService {
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
-    public Mono<User> updateUser(Long id, User user) {
+    public Mono<User> updateUser(long id, User user) {
         return Mono.fromCallable(() -> {
             User existingUser = userRepository.findById(id)
                     .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND));
@@ -76,19 +77,19 @@ public class UserServiceImpl implements UserService {
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
-    public Mono<Void> deleteUser(Long id) {
+    public Mono<Void> deleteUser(long id) {
         return Mono.fromRunnable(() -> userRepository.deleteById(id))
                 .subscribeOn(Schedulers.boundedElastic())
                 .then();
     }
 
-    public Mono<Set<Long>> getUserFavoriteVacancyIds(Long id) {
+    public Mono<Set<Long>> getUserFavoriteVacancyIds(long id) {
         return getUserById(id)
                 .map(User::getFavoriteVacancyIds);
     }
 
-    @CircuitBreaker(name = "vacancyService", fallbackMethod = "getUserFavoritesFallback")
-    public Mono<List<Object>> getUserFavorites(Long id) {
+    @CircuitBreaker(name = "vacancy-service")
+    public Mono<List<Object>> getUserFavorites(long id) {
         return getUserFavoriteVacancyIds(id)
                 .flatMapMany(Flux::fromIterable)
                 .flatMap(vacancyId -> Mono.fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
@@ -96,16 +97,8 @@ public class UserServiceImpl implements UserService {
                 .collectList();
     }
 
-    public Mono<List<Object>> getUserFavoritesFallback() {
-        return Mono.error(new ServiceException(VACANCY_SERVICE_NOT_AVAILABLE));
-    }
-
-    public Mono<List<Object>> getUserResponsesFallback() {
-        return Mono.error(new ServiceException(VACANCY_SERVICE_NOT_AVAILABLE));
-    }
-
-    @CircuitBreaker(name = "vacancyService", fallbackMethod = "addToFavoritesFallback")
-    public Mono<Void> addToFavorites(Long userId, Long vacancyId) {
+    @CircuitBreaker(name = "vacancy-service")
+    public Mono<Void> addToFavorites(long userId, long vacancyId) {
         return Mono.fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
                 .subscribeOn(Schedulers.boundedElastic())
                 .then(getUserById(userId))
@@ -117,11 +110,7 @@ public class UserServiceImpl implements UserService {
                 .then();
     }
 
-    public Mono<Void> addToFavoritesFallback() {
-        return Mono.error(new ServiceException(VACANCY_SERVICE_NOT_AVAILABLE));
-    }
-
-    public Mono<Void> removeFromFavorites(Long userId, Long vacancyId) {
+    public Mono<Void> removeFromFavorites(long userId, long vacancyId) {
         return getUserById(userId)
                 .flatMap(user -> Mono.fromCallable(() -> {
                     user.getFavoriteVacancyIds().remove(vacancyId);

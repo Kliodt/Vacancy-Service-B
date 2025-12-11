@@ -17,16 +17,16 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
     private final UserVacancyResponseRepository responseRepository;
 
     @Transactional(readOnly = true)
-    public List<UserVacancyResponse> getUserResponses(Long userId) {
+    public List<UserVacancyResponse> getUserResponses(long userId) {
         return responseRepository.findByUserId(userId);
     }
 
     @Transactional(readOnly = true)
-    public List<UserVacancyResponse> getVacancyResponses(Long vacancyId) {
+    public List<UserVacancyResponse> getVacancyResponses(long vacancyId) {
         return responseRepository.findByVacancyId(vacancyId);
     }
 
-    public void deleteByUserIdAndVacancyId(Long userId, Long vacancyId) {
+    public void deleteByUserIdAndVacancyId(long userId, long vacancyId) {
         responseRepository.deleteByUserIdAndVacancyId(userId, vacancyId);
     }
 

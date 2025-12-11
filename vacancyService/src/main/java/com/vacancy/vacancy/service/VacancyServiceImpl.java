@@ -8,17 +8,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import com.vacancy.vacancy.client.UserClient;
 import com.vacancy.vacancy.exceptions.RequestException;
-import com.vacancy.vacancy.exceptions.ServiceException;
-import com.vacancy.vacancy.client.OrganizationClient;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-
 import com.vacancy.vacancy.model.UserVacancyResponse;
 import com.vacancy.vacancy.model.Vacancy;
 import com.vacancy.vacancy.repository.UserVacancyResponseRepository;
 import com.vacancy.vacancy.repository.VacancyRepository;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -28,7 +26,6 @@ public class VacancyServiceImpl implements VacancyService {
     private final VacancyRepository vacancyRepository;
     private final UserVacancyResponseRepository responseRepository;
     private final UserClient userClient;
-    private final OrganizationClient organizationClient;
 
     public Page<Vacancy> getAllVacancies(int page, int size) {
         if (size > 50) {
@@ -38,48 +35,41 @@ public class VacancyServiceImpl implements VacancyService {
         return vacancyRepository.findAll(pageable);
     }
 
-    public Vacancy getVacancyById(Long id) {
+    public Vacancy getVacancyById(long id) {
         return vacancyRepository.findById(id)
                 .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена"));
     }
 
-    public void deleteVacancy(Long id) {
+    public void deleteVacancy(long id) {
         vacancyRepository.deleteById(id);
     }
 
-    @CircuitBreaker(name = "userService", fallbackMethod = "respondToVacancyFallback")
+    @CircuitBreaker(name = "user-service")
     @Transactional
-    public void respondToVacancy(Long vacancyId, Long userId) {
+    public void respondToVacancy(long vacancyId, long userId) {
         userClient.getUserById(userId);
         getVacancyById(vacancyId);
         responseRepository.save(new UserVacancyResponse(userId, vacancyId));
     }
 
-    public void respondToVacancyFallback() {
-        throw new ServiceException("Сервис пользователей недоступен");
-    }
-
     @Transactional
-    public void removeResponseFromVacancy(Long vacancyId, Long userId) {
+    public void removeResponseFromVacancy(long vacancyId, long userId) {
         responseRepository.deleteByUserIdAndVacancyId(userId, vacancyId);
     }
 
     public Vacancy saveVacancy(Vacancy vacancy) {
-        if (vacancy.getOrganizationId() != null) {
-            organizationClient.getOrganizationById(vacancy.getOrganizationId());
-        }
         return vacancyRepository.save(vacancy);
     }
 
-    public List<UserVacancyResponse> getVacancyResponses(Long vacancyId) {
+    public List<UserVacancyResponse> getVacancyResponses(long vacancyId) {
         return responseRepository.findByVacancyId(vacancyId);
     }
 
-    public List<UserVacancyResponse> getUserResponses(Long userId) {
+    public List<UserVacancyResponse> getUserResponses(long userId) {
         return responseRepository.findByUserId(userId);
     }
 
-    public List<UserVacancyResponse> getVacancyResponsesForUser(Long userId, Long vacancyId) {
+    public List<UserVacancyResponse> getVacancyResponsesForUser(long userId, long vacancyId) {
         return responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
     }
 

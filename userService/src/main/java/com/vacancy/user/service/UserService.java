@@ -9,12 +9,12 @@ import java.util.Set;
 
 public interface UserService {
     Flux<User> getAllUsers(int page, int size);
-    Mono<User> getUserById(Long id);
+    Mono<User> getUserById(long id);
     Mono<User> createUser(User user);
-    Mono<User> updateUser(Long id, User user);
-    Mono<Void> deleteUser(Long id);
-    Mono<Set<Long>> getUserFavoriteVacancyIds(Long id);
-    Mono<List<Object>> getUserFavorites(Long id);
-    Mono<Void> addToFavorites(Long userId, Long vacancyId);
-    Mono<Void> removeFromFavorites(Long userId, Long vacancyId);
+    Mono<User> updateUser(long id, User user);
+    Mono<Void> deleteUser(long id);
+    Mono<Set<Long>> getUserFavoriteVacancyIds(long id);
+    Mono<List<Object>> getUserFavorites(long id);
+    Mono<Void> addToFavorites(long userId, long vacancyId);
+    Mono<Void> removeFromFavorites(long userId, long vacancyId);
 }

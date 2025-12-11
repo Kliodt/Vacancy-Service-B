@@ -8,12 +8,12 @@ import java.util.List;
 
 public interface VacancyService {
     Page<Vacancy> getAllVacancies(int page, int size);
-    Vacancy getVacancyById(Long id);
-    void deleteVacancy(Long id);
-    void respondToVacancy(Long vacancyId, Long userId);
-    void removeResponseFromVacancy(Long vacancyId, Long userId);
+    Vacancy getVacancyById(long id);
+    void deleteVacancy(long id);
+    void respondToVacancy(long vacancyId, long userId);
+    void removeResponseFromVacancy(long vacancyId, long userId);
     Vacancy saveVacancy(Vacancy vacancy);
-    List<UserVacancyResponse> getVacancyResponses(Long vacancyId);
-    List<UserVacancyResponse> getUserResponses(Long userId);
-    List<UserVacancyResponse> getVacancyResponsesForUser(Long userId, Long vacancyId);
+    List<UserVacancyResponse> getVacancyResponses(long vacancyId);
+    List<UserVacancyResponse> getUserResponses(long userId);
+    List<UserVacancyResponse> getVacancyResponsesForUser(long userId, long vacancyId);
 }

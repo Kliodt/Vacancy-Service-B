@@ -11,3 +11,11 @@ spring:
           uri: https://github.com/Kliodt/vacancy-app-config
           default-label: main
           force-pull: true
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+      base-path: "/config"

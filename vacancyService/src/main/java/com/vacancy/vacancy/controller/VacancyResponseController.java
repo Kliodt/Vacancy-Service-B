@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.vacancy.vacancy.model.UserVacancyResponse;
 import com.vacancy.vacancy.service.VacancyService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.ws.rs.QueryParam;
 import lombok.RequiredArgsConstructor;
 
@@ -22,6 +23,7 @@ public class VacancyResponseController {
 
     private final VacancyService vacancyService;
 
+    @Operation(summary = "Откликнуться на вакансию")
     @PutMapping
     public ResponseEntity<Void> respondToVacancy(
             @QueryParam("vacancyId") Long vacancyId,
@@ -34,6 +36,7 @@ public class VacancyResponseController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Удалить отклик")
     @DeleteMapping
     public ResponseEntity<Void> removeResponseFromVacancy(
             @QueryParam("vacancyId") Long vacancyId,
@@ -46,6 +49,7 @@ public class VacancyResponseController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Получить ответы по userId или vacancyId")
     @GetMapping
     public ResponseEntity<List<UserVacancyResponse>> getAllVacancyResponses(
             @QueryParam("vacancyId") Long vacancyId,

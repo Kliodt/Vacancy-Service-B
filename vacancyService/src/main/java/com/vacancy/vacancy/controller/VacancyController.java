@@ -26,10 +26,7 @@ public class VacancyController {
     private final VacancyService vacancyService;
     private final ModelMapper modelMapper = new ModelMapper();
 
-    @Operation(
-            summary = "Получить все вакансии",
-            description = "Возвращает список вакансий страницами"
-    )
+    @Operation(summary = "Получить все вакансии")
     @GetMapping
     public ResponseEntity<List<Vacancy>> getAllVacancies(
             @RequestParam(defaultValue = "0") int page,
@@ -43,17 +40,20 @@ public class VacancyController {
         return ResponseEntity.ok().headers(headers).body(vacancyPage.getContent());
     }
 
+    @Operation(summary = "Получить вакансию по id")
     @GetMapping("/{vacancyId}")
     public ResponseEntity<Vacancy> getVacancyById(@PathVariable Long vacancyId) {
         return ResponseEntity.ok(vacancyService.getVacancyById(vacancyId));
     }
 
+    @Operation(summary = "Создать вакансию")
     @PostMapping
     public ResponseEntity<Vacancy> createVacancy(@Valid @RequestBody VacancyDtoIn vacancy) {
         Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
         return ResponseEntity.status(HttpStatus.CREATED).body(vacancyService.saveVacancy(vac));
     }
 
+    @Operation(summary = "Обновить вакансию")
     @PutMapping("/{vacancyId}")
     public ResponseEntity<Vacancy> updateVacancy(
             @PathVariable Long vacancyId,
@@ -63,6 +63,7 @@ public class VacancyController {
         return ResponseEntity.ok(vacancyService.saveVacancy(vac));
     }
 
+    @Operation(summary = "Удалить вакансию")
     @DeleteMapping("/{vacancyId}")
     public ResponseEntity<Void> deleteVacancy(@PathVariable Long vacancyId) {
         vacancyService.deleteVacancy(vacancyId);

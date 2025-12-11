@@ -95,25 +95,6 @@ public class OrganizationServiceImpl implements OrganizationService {
         return Mono.error(new ServiceException("Внешний сервис вакансий недоступен"));
     }
 
-    @CircuitBreaker(name = "vacancyService", fallbackMethod = "updateOrganizationVacancyFallback")
-    public Mono<Void> updateOrganizationVacancy(Long organizationId, Long vacancyId) {
-        return organizationRepository.findById(organizationId)
-                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORGANIZATION_NOT_FOUND)))
-                .flatMap(org -> {
-                    List<Long> ids = org.getVacancyIds();
-                    if (!ids.contains(vacancyId)) {
-                        return Mono.error(new RequestException(HttpStatus.FORBIDDEN, "Вакансия не принадлежит данной организации"));
-                    }
-                    return Mono.fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
-                            .subscribeOn(Schedulers.boundedElastic())
-                            .then(Mono.empty());
-                });
-    }
-
-    public Mono<Void> updateOrganizationVacancyFallback() {
-        return Mono.error(new SecurityException("Внешний сервис вакансий недоступен"));
-    }
-
     public Mono<Void> deleteOrganizationVacancy(Long organizationId, Long vacancyId) {
         return organizationRepository.findById(organizationId)
                 .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORGANIZATION_NOT_FOUND)))

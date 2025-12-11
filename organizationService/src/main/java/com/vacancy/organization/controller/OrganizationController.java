@@ -23,6 +23,7 @@ import com.vacancy.organization.model.dto.OrganizationDtoOut;
 import com.vacancy.organization.service.OrganizationService;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
@@ -38,6 +39,7 @@ public class OrganizationController {
     private final VacancyClient vacancyClient;
     private final ModelMapper modelMapper = new ModelMapper();
 
+    @Operation(summary = "Получить все организации")
     @GetMapping
     public Flux<OrganizationDtoOut> getAllOrganizations(
             @RequestParam(defaultValue = "0") int page,
@@ -46,6 +48,7 @@ public class OrganizationController {
                 .map(org -> modelMapper.map(org, OrganizationDtoOut.class));
     }
 
+    @Operation(summary = "Получить организацию по id")
     @GetMapping("/{id}")
     public Mono<ResponseEntity<OrganizationDtoOut>> getOrganizationById(@PathVariable Long id) {
         return organizationService.getOrganizationById(id)
@@ -53,6 +56,7 @@ public class OrganizationController {
                 .map(ResponseEntity::ok);
     }
 
+    @Operation(summary = "Создать организацию")
     @PostMapping
     public Mono<ResponseEntity<OrganizationDtoOut>> createOrganization(@Valid @RequestBody OrganizationDtoIn organization) {
         return organizationService.createOrganization(modelMapper.map(organization, Organization.class))
@@ -60,6 +64,7 @@ public class OrganizationController {
                 .map(org -> ResponseEntity.status(HttpStatus.CREATED).body(org));
     }
 
+    @Operation(summary = "Обновить организацию")
     @PutMapping("/{id}")
     public Mono<ResponseEntity<OrganizationDtoOut>> updateOrganization(@PathVariable Long id, @Valid @RequestBody OrganizationDtoIn organization) {
         return organizationService.updateOrganization(id, modelMapper.map(organization, Organization.class))
@@ -67,12 +72,14 @@ public class OrganizationController {
                 .map(ResponseEntity::ok);
     }
 
+    @Operation(summary = "Удалить организацию")
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Void>> deleteOrganization(@PathVariable Long id) {
         return organizationService.deleteOrganization(id)
                 .thenReturn(ResponseEntity.noContent().build());
     }
 
+    @Operation(summary = "Получить вакансии, размещенные организацией")
     @GetMapping("/{orgId}/vacancies")
     @CircuitBreaker(name = "vacancyService", fallbackMethod = "getOrganizationVacanciesFallback")
     public Mono<ResponseEntity<List<Object>>> getOrganizationVacancies(@PathVariable Long orgId) {
@@ -84,9 +91,10 @@ public class OrganizationController {
     }
 
     public Mono<ResponseEntity<List<Object>>> getOrganizationVacanciesFallback() {
-        return Mono.error(new ServiceException("Сервис недоступен"));
+        return Mono.error(new ServiceException("Сервис вакансий недоступен"));
     }
 
+    @Operation(summary = "Разместить вакансию")
     @PostMapping("/{orgId}/vacancies/{vacancyId}")
     public Mono<ResponseEntity<Void>> addVacancyToOrganization(
             @PathVariable Long orgId,
@@ -95,14 +103,7 @@ public class OrganizationController {
                 .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
     }
 
-    @PutMapping("/{orgId}/vacancies/{vacancyId}")
-    public Mono<ResponseEntity<Void>> updateOrganizationVacancy(
-            @PathVariable Long orgId,
-            @PathVariable Long vacancyId) {
-        return organizationService.updateOrganizationVacancy(orgId, vacancyId)
-                .thenReturn(ResponseEntity.ok().build());
-    }
-
+    @Operation(summary = "Убрать размещенную вакансию")
     @DeleteMapping("/{orgId}/vacancies/{vacancyId}")
     public Mono<ResponseEntity<Void>> deleteOrganizationVacancy(
             @PathVariable Long orgId,

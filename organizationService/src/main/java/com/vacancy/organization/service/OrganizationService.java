@@ -15,6 +15,5 @@ public interface OrganizationService {
     Mono<Void> deleteOrganization(Long id);
     Mono<List<Long>> getOrganizationVacancyIds(Long id);
     Mono<Void> addVacancyToOrganization(Long organizationId, Long vacancyId);
-    Mono<Void> updateOrganizationVacancy(Long organizationId, Long vacancyId);
     Mono<Void> deleteOrganizationVacancy(Long organizationId, Long vacancyId);
 }

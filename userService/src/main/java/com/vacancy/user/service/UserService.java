@@ -15,10 +15,6 @@ public interface UserService {
     Mono<Void> deleteUser(Long id);
     Mono<Set<Long>> getUserFavoriteVacancyIds(Long id);
     Mono<List<Object>> getUserFavorites(Long id);
-    Mono<Set<Long>> getUserResponseVacancyIds(Long id);
-    Mono<List<Object>> getUserResponses(Long id);
     Mono<Void> addToFavorites(Long userId, Long vacancyId);
     Mono<Void> removeFromFavorites(Long userId, Long vacancyId);
-    Mono<Void> respondToVacancy(Long userId, Long vacancyId);
-    Mono<Void> removeResponseFromVacancy(Long userId, Long vacancyId);
 }

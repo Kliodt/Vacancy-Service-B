@@ -43,8 +43,4 @@ public class User {
     @Column(name = "vacancy_id")
     private Set<Long> favoriteVacancyIds = new HashSet<>(); // ID избранных вакансий
 
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(name = "user_vacancy_responses", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "vacancy_id")
-    private Set<Long> responseVacancyIds = new HashSet<>(); // ID вакансий, на которые откликнулся
 }

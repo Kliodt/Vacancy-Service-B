@@ -11,6 +11,6 @@ import java.util.List;
 public interface UserVacancyResponseRepository extends CrudRepository<UserVacancyResponse, Long> {
     List<UserVacancyResponse> findByUserId(Long userId);
     List<UserVacancyResponse> findByVacancyId(Long vacancyId);
-    java.util.Optional<UserVacancyResponse> findByUserIdAndVacancyId(Long userId, Long vacancyId);
+    List<UserVacancyResponse> findByUserIdAndVacancyId(Long userId, Long vacancyId);
     void deleteByUserIdAndVacancyId(Long userId, Long vacancyId);
 }

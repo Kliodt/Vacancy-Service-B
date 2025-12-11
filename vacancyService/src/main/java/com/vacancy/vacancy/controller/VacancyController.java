@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 
 import com.vacancy.vacancy.model.Vacancy;
 import com.vacancy.vacancy.model.dto.VacancyDtoIn;
-import com.vacancy.vacancy.model.UserVacancyResponse;
 import com.vacancy.vacancy.service.VacancyService;
 
 import lombok.RequiredArgsConstructor;
@@ -44,9 +43,9 @@ public class VacancyController {
         return ResponseEntity.ok().headers(headers).body(vacancyPage.getContent());
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Vacancy> getVacancyById(@PathVariable Long id) {
-        return ResponseEntity.ok(vacancyService.getVacancyById(id));
+    @GetMapping("/{vacancyId}")
+    public ResponseEntity<Vacancy> getVacancyById(@PathVariable Long vacancyId) {
+        return ResponseEntity.ok(vacancyService.getVacancyById(vacancyId));
     }
 
     @PostMapping
@@ -55,40 +54,19 @@ public class VacancyController {
         return ResponseEntity.status(HttpStatus.CREATED).body(vacancyService.saveVacancy(vac));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{vacancyId}")
     public ResponseEntity<Vacancy> updateVacancy(
-            @PathVariable Long id,
+            @PathVariable Long vacancyId,
             @Valid @RequestBody VacancyDtoIn vacancy) {
         Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
-        vac.setId(id);
+        vac.setId(vacancyId);
         return ResponseEntity.ok(vacancyService.saveVacancy(vac));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteVacancy(@PathVariable Long id) {
-        vacancyService.deleteVacancy(id);
+    @DeleteMapping("/{vacancyId}")
+    public ResponseEntity<Void> deleteVacancy(@PathVariable Long vacancyId) {
+        vacancyService.deleteVacancy(vacancyId);
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping("/{vacancyId}/respond/{userId}")
-    public ResponseEntity<Void> respondToVacancy(
-            @PathVariable Long vacancyId,
-            @PathVariable Long userId) {
-        vacancyService.respondToVacancy(vacancyId, userId);
-        return ResponseEntity.ok().build();
-    }
-
-    @DeleteMapping("/{vacancyId}/respond/{userId}")
-    public ResponseEntity<Void> removeResponseFromVacancy(
-            @PathVariable Long vacancyId,
-            @PathVariable Long userId) {
-        vacancyService.removeResponseFromVacancy(vacancyId, userId);
-        return ResponseEntity.ok().build();
-    }
-
-    @GetMapping("/{vacancyId}/responses")
-    public ResponseEntity<List<UserVacancyResponse>> getVacancyResponses(
-            @PathVariable Long vacancyId) {
-        return ResponseEntity.ok(vacancyService.getVacancyResponses(vacancyId));
-    }
 }

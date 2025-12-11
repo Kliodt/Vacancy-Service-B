@@ -74,4 +74,13 @@ public class VacancyServiceImpl implements VacancyService {
     public List<UserVacancyResponse> getVacancyResponses(Long vacancyId) {
         return responseRepository.findByVacancyId(vacancyId);
     }
+
+    public List<UserVacancyResponse> getUserResponses(Long userId) {
+        return responseRepository.findByUserId(userId);
+    }
+
+    public List<UserVacancyResponse> getVacancyResponsesForUser(Long userId, Long vacancyId) {
+        return responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
+    }
+
 }

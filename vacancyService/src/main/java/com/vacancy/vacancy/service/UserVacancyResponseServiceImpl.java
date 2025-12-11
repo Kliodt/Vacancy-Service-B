@@ -26,7 +26,6 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
         return responseRepository.findByVacancyId(vacancyId);
     }
 
-    
     public void deleteByUserIdAndVacancyId(Long userId, Long vacancyId) {
         responseRepository.deleteByUserIdAndVacancyId(userId, vacancyId);
     }
@@ -35,9 +34,9 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
     public UserVacancyResponse addOrReplaceResponse(UserVacancyResponse response) {
         Long vacancyId = response.getVacancyId();
         Long userId = response.getUserId();
-        UserVacancyResponse existing = responseRepository.findByUserIdAndVacancyId(userId, vacancyId).orElse(null);
+        List<UserVacancyResponse> existing = responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
         if (existing != null) {
-            responseRepository.delete(existing);
+            responseRepository.deleteAll(existing);
         }
         return responseRepository.save(response);
     }

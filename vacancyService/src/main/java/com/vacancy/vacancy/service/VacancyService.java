@@ -14,4 +14,6 @@ public interface VacancyService {
     void removeResponseFromVacancy(Long vacancyId, Long userId);
     Vacancy saveVacancy(Vacancy vacancy);
     List<UserVacancyResponse> getVacancyResponses(Long vacancyId);
+    List<UserVacancyResponse> getUserResponses(Long userId);
+    List<UserVacancyResponse> getVacancyResponsesForUser(Long userId, Long vacancyId);
 }

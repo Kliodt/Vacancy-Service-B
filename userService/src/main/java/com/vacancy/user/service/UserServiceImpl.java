@@ -21,7 +21,6 @@ import reactor.core.scheduler.Schedulers;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    
     private static final String USER_NOT_FOUND = "Пользователь не найден";
     private static final String VACANCY_SERVICE_NOT_AVAILABLE = "Сервис вакансий недоступен";
 
@@ -29,9 +28,10 @@ public class UserServiceImpl implements UserService {
     private final VacancyClient vacancyClient;
 
     public Flux<User> getAllUsers(int page, int size) {
-        if (size > 50) size = 50;
+        if (size > 50)
+            size = 50;
         int skip = page * size;
-        
+
         return Mono.fromCallable(userRepository::findAll)
                 .flatMapMany(Flux::fromIterable)
                 .skip(skip)
@@ -47,30 +47,32 @@ public class UserServiceImpl implements UserService {
 
     public Mono<User> createUser(User user) {
         return Mono.fromCallable(() -> {
-                    if (userRepository.findUserByEmail(user.getEmail()) != null) {
-                        throw new RequestException(HttpStatus.CONFLICT, "Пользователь с таким email уже зарегистрирован");
-                    }
-                    user.setId(0L);
-                    return userRepository.save(user);
-                })
+            if (userRepository.findUserByEmail(user.getEmail()) != null) {
+                throw new RequestException(HttpStatus.CONFLICT, "Пользователь с таким email уже зарегистрирован");
+            }
+            user.setId(0L);
+            return userRepository.save(user);
+        })
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
     public Mono<User> updateUser(Long id, User user) {
         return Mono.fromCallable(() -> {
-                    User existingUser = userRepository.findById(id)
-                            .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND));
+            User existingUser = userRepository.findById(id)
+                    .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND));
 
-                    if (userRepository.findUserByEmail(user.getEmail()) != null && !existingUser.getEmail().equals(user.getEmail())) {
-                        throw new RequestException(HttpStatus.CONFLICT, "С таким email уже зарегистрирован другой пользователь");
-                    }
+            if (userRepository.findUserByEmail(user.getEmail()) != null
+                    && !existingUser.getEmail().equals(user.getEmail())) {
+                throw new RequestException(HttpStatus.CONFLICT,
+                        "С таким email уже зарегистрирован другой пользователь");
+            }
 
-                    existingUser.setNickname(user.getNickname());
-                    existingUser.setEmail(user.getEmail());
-                    existingUser.setCvLink(user.getCvLink());
-                    
-                    return userRepository.save(existingUser);
-                })
+            existingUser.setNickname(user.getNickname());
+            existingUser.setEmail(user.getEmail());
+            existingUser.setCvLink(user.getCvLink());
+
+            return userRepository.save(existingUser);
+        })
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -98,20 +100,6 @@ public class UserServiceImpl implements UserService {
         return Mono.error(new ServiceException(VACANCY_SERVICE_NOT_AVAILABLE));
     }
 
-    public Mono<Set<Long>> getUserResponseVacancyIds(Long id) {
-        return getUserById(id)
-                .map(User::getResponseVacancyIds);
-    }
-
-    @CircuitBreaker(name = "vacancyService", fallbackMethod = "getUserResponsesFallback")
-    public Mono<List<Object>> getUserResponses(Long id) {
-        return getUserResponseVacancyIds(id)
-                .flatMapMany(Flux::fromIterable)
-                .flatMap(vacancyId -> Mono.fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
-                        .subscribeOn(Schedulers.boundedElastic()))
-                .collectList();
-    }
-
     public Mono<List<Object>> getUserResponsesFallback() {
         return Mono.error(new ServiceException(VACANCY_SERVICE_NOT_AVAILABLE));
     }
@@ -122,9 +110,9 @@ public class UserServiceImpl implements UserService {
                 .subscribeOn(Schedulers.boundedElastic())
                 .then(getUserById(userId))
                 .flatMap(user -> Mono.fromCallable(() -> {
-                            user.getFavoriteVacancyIds().add(vacancyId);
-                            return userRepository.save(user);
-                        })
+                    user.getFavoriteVacancyIds().add(vacancyId);
+                    return userRepository.save(user);
+                })
                         .subscribeOn(Schedulers.boundedElastic()))
                 .then();
     }
@@ -136,22 +124,9 @@ public class UserServiceImpl implements UserService {
     public Mono<Void> removeFromFavorites(Long userId, Long vacancyId) {
         return getUserById(userId)
                 .flatMap(user -> Mono.fromCallable(() -> {
-                            user.getFavoriteVacancyIds().remove(vacancyId);
-                            return userRepository.save(user);
-                        })
-                        .subscribeOn(Schedulers.boundedElastic()))
-                .then();
-    }
-
-    @CircuitBreaker(name = "vacancyService", fallbackMethod = "respondToVacancyFallback")
-    public Mono<Void> respondToVacancy(Long userId, Long vacancyId) {
-        return Mono.fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
-                .subscribeOn(Schedulers.boundedElastic())
-                .then(getUserById(userId))
-                .flatMap(user -> Mono.fromCallable(() -> {
-                            user.getResponseVacancyIds().add(vacancyId);
-                            return userRepository.save(user);
-                        })
+                    user.getFavoriteVacancyIds().remove(vacancyId);
+                    return userRepository.save(user);
+                })
                         .subscribeOn(Schedulers.boundedElastic()))
                 .then();
     }
@@ -160,14 +135,4 @@ public class UserServiceImpl implements UserService {
         return Mono.error(new ServiceException(VACANCY_SERVICE_NOT_AVAILABLE));
     }
 
-    public Mono<Void> removeResponseFromVacancy(Long userId, Long vacancyId) {
-        return getUserById(userId)
-                .flatMap(user -> Mono.fromCallable(() -> {
-                            user.getResponseVacancyIds().remove(vacancyId);
-                            return userRepository.save(user);
-                        })
-                        .subscribeOn(Schedulers.boundedElastic()))
-                .then();
-    }
 }
-

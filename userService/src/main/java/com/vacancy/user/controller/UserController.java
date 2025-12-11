@@ -83,28 +83,4 @@ public class UserController {
         return userService.removeFromFavorites(userId, vacancyId)
                 .thenReturn(ResponseEntity.ok().build());
     }
-
-    @GetMapping("/{userId}/responses")
-    public Mono<ResponseEntity<List<Object>>> getUserResponses(@PathVariable Long userId) {
-        return userService.getUserResponses(userId)
-                .map(ResponseEntity::ok);
-    }
-
-    @GetMapping("/{userId}/responses/ids")
-    public Mono<ResponseEntity<Set<Long>>> getUserResponseIds(@PathVariable Long userId) {
-        return userService.getUserResponseVacancyIds(userId)
-                .map(ResponseEntity::ok);
-    }
-
-    @PutMapping("/{userId}/respond/{vacancyId}")
-    public Mono<ResponseEntity<Void>> respondToVacancy(@PathVariable Long userId, @PathVariable Long vacancyId) {
-        return userService.respondToVacancy(userId, vacancyId)
-                .thenReturn(ResponseEntity.ok().build());
-    }
-
-    @DeleteMapping("/{userId}/respond/{vacancyId}")
-    public Mono<ResponseEntity<Void>> removeResponseFromVacancy(@PathVariable Long userId, @PathVariable Long vacancyId) {
-        return userService.removeResponseFromVacancy(userId, vacancyId)
-                .thenReturn(ResponseEntity.ok().build());
-    }
 }

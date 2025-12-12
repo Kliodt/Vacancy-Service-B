@@ -1,9 +1,7 @@
 server:
   port: 8083
-spring:
-  application:
-    name: vacancy-service
 
+spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     url: ${DB_URL}
@@ -13,39 +11,10 @@ spring:
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: update #todo: update -> validate
+      ddl-auto: validate
 
-  # flyway:
-  #   enabled: true
-  #   url: ${DB_URL}
-  #   user: ${DB_USER}
-  #   password: ${DB_PASS}
-
-eureka:
-  client:
-    service-url:
-      # todo: change in docker
-      # defaultZone: http://eureka-server:8761/eureka/
-      defaultZone: http://localhost:8761/eureka/
-
-
-feign:
-  hystrix:
+  flyway:
     enabled: true
-
-
-springdoc:
-  api-docs:
-    enabled: true 
-    path: /vacancy/v3/api-docs
-  swagger-ui:
-    enabled: true
-    path: /vacancy/swagger-ui.html
-
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "*"
-      base-path: "/vacancy"
+    url: ${DB_URL}
+    user: ${DB_USER}
+    password: ${DB_PASS}

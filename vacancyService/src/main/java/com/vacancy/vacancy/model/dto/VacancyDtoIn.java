@@ -33,8 +33,6 @@ public class VacancyDtoIn {
     @Size(max = 100, message = "Название города не может превышать 100 символов")
     private String city;
 
-    private long organizationId;
-
     @AssertTrue(message = "Минимальная зарплата не может быть больше максимальной")
     boolean isSalaryRangeValid() {
         return this.minSalary != null && this.maxSalary != null && this.minSalary <= this.maxSalary;

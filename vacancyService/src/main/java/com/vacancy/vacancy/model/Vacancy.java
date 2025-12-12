@@ -37,7 +37,4 @@ public class Vacancy {
 
     @Size(max = 100, message = "Название города не может превышать 100 символов")
     private @Nullable String city;
-
-    @Column(name = "organization_id")
-    private Long organizationId; // ID организации, опубликовавшей вакансию
 }

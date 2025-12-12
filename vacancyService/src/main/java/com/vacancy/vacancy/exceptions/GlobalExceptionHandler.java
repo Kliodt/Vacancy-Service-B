@@ -33,22 +33,15 @@ public class GlobalExceptionHandler {
         return e.responseEntity();
     }
 
-    // if this or other service is not responding
-    @ExceptionHandler(ServiceException.class)
-    public ResponseEntity<String> handleMethodArgumentNotValid(ServiceException e) {
-        log.error("Service unavailable: {}", e.getMessage(), e);
-        return ResponseEntity.status(503).body("Service unavailable");
-    }
-
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<String> handleRuntimeException(RuntimeException e) {
-        log.error("Runtime error: {}", e.getMessage());
-        return ResponseEntity.badRequest().body("Error");
+        log.error("Runtime error ({}): {}", e.getClass().toString(), e.getMessage(), e);
+        return ResponseEntity.badRequest().body("Error :)");
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleGenericException(Exception e) {
-        log.error("Internal error: {}", e.getMessage(), e);
-        return ResponseEntity.status(500).body("Internal error");
+        log.error("Internal error ({}): {}", e.getClass().toString(), e.getMessage(), e);
+        return ResponseEntity.status(500).body("Internal error :)");
     }
 }

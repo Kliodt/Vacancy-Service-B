@@ -1,17 +1,20 @@
 package com.vacancy.organization.model;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 @Data
 @Table("organization")
+@Slf4j
 public class Organization {
 
     @Id
@@ -26,15 +29,6 @@ public class Organization {
     @Size(max = 100, message = "Email не может превышать 100 символов")
     private String email;
 
-    private Long[] vacancyIds;
-
-
-    public List<Long> getVacancyIds() {
-        return vacancyIds == null ? List.of() : Arrays.asList(vacancyIds);
-    }
-
-    public void setVacancyIds(List<Long> numbers) {
-        this.vacancyIds = numbers == null ? null : numbers.toArray(Long[]::new);
-    }
+    private List<Long> vacancyIds = new ArrayList<>();
 
 }

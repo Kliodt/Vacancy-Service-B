@@ -13,7 +13,7 @@ public interface OrganizationService {
     Mono<Organization> createOrganization(Organization organization);
     Mono<Organization> updateOrganization(long id, Organization organization);
     Mono<Void> deleteOrganization(long id);
-    Mono<List<Object>> getOrganizationVacancies(long id);
+    Mono<List<Long>> getOrganizationVacancies(long id);
     Mono<Void> addVacancyToOrganization(long organizationId, long vacancyId);
     Mono<Void> deleteOrganizationVacancy(long organizationId, long vacancyId);
 }

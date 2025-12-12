@@ -85,7 +85,10 @@ public class UserController {
     @PutMapping("/{userId}/favorite/{vacancyId}")
     public Mono<ResponseEntity<Void>> addToFavorites(@PathVariable Long userId, @PathVariable Long vacancyId) {
         return userService.addToFavorites(userId, vacancyId)
-                .thenReturn(ResponseEntity.ok().build());
+                .hasElement()
+                .flatMap(exists -> exists
+                        ? Mono.just(ResponseEntity.ok().build())
+                        : Mono.just(ResponseEntity.notFound().build()));
     }
 
     @Operation(summary = "Убрать вакансию из избранного")

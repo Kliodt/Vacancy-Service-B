@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.vacancy.organization.exceptions.ServiceException;
 import com.vacancy.organization.model.Organization;
 import com.vacancy.organization.model.dto.OrganizationDtoIn;
 import com.vacancy.organization.model.dto.OrganizationDtoOut;
@@ -55,7 +54,7 @@ public class OrganizationController {
     @Operation(summary = "Создать организацию")
     @PostMapping
     public Mono<ResponseEntity<OrganizationDtoOut>> createOrganization(
-            @Valid @RequestBody OrganizationDtoIn organization) {
+            @RequestBody @Valid OrganizationDtoIn organization) {
         return organizationService.createOrganization(modelMapper.map(organization, Organization.class))
                 .map(org -> modelMapper.map(org, OrganizationDtoOut.class))
                 .map(org -> ResponseEntity.status(HttpStatus.CREATED).body(org));
@@ -64,7 +63,7 @@ public class OrganizationController {
     @Operation(summary = "Обновить организацию")
     @PutMapping("/{id}")
     public Mono<ResponseEntity<OrganizationDtoOut>> updateOrganization(@PathVariable Long id,
-            @Valid @RequestBody OrganizationDtoIn organization) {
+            @RequestBody @Valid OrganizationDtoIn organization) {
         return organizationService.updateOrganization(id, modelMapper.map(organization, Organization.class))
                 .map(org -> modelMapper.map(org, OrganizationDtoOut.class))
                 .map(ResponseEntity::ok);
@@ -79,12 +78,8 @@ public class OrganizationController {
 
     @Operation(summary = "Получить вакансии, размещенные организацией")
     @GetMapping("/{orgId}/vacancies")
-    public Mono<ResponseEntity<List<Object>>> getOrganizationVacancies(@PathVariable Long orgId) {
+    public Mono<ResponseEntity<List<Long>>> getOrganizationVacancies(@PathVariable Long orgId) {
         return organizationService.getOrganizationVacancies(orgId).map(ResponseEntity::ok);
-    }
-
-    public Mono<ResponseEntity<List<Object>>> getOrganizationVacanciesFallback() {
-        return Mono.error(new ServiceException("Сервис вакансий недоступен"));
     }
 
     @Operation(summary = "Разместить вакансию")

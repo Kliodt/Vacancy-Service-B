@@ -38,7 +38,7 @@ public class User {
     @Size(max = 512, message = "CV Link не может превышать 512 символов")
     private @Nullable String cvLink;
 
-    @ElementCollection(fetch = FetchType.LAZY)
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_favorites", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "vacancy_id")
     private Set<Long> favoriteVacancyIds = new HashSet<>(); // ID избранных вакансий

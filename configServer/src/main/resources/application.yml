@@ -9,9 +9,7 @@ spring:
       server:
         git:
           uri: https://github.com/Kliodt/vacancy-app-config
-          default-label: main
-          force-pull: true
-
+          clone-on-start: true
 
 management:
   endpoints:

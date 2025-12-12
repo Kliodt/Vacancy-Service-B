@@ -3,27 +3,28 @@ package com.vacancy.user.service;
 import java.util.List;
 import java.util.Set;
 
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.vacancy.user.client.VacancyClient;
 import com.vacancy.user.exceptions.RequestException;
-import com.vacancy.user.exceptions.ServiceException;
 import com.vacancy.user.model.User;
 import com.vacancy.user.repository.UserRepository;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private static final String USER_NOT_FOUND = "Пользователь не найден";
-    private static final String VACANCY_SERVICE_NOT_AVAILABLE = "Сервис вакансий недоступен";
 
     private final UserRepository userRepository;
     private final VacancyClient vacancyClient;
@@ -94,20 +95,27 @@ public class UserServiceImpl implements UserService {
                 .flatMapMany(Flux::fromIterable)
                 .flatMap(vacancyId -> Mono.fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
                         .subscribeOn(Schedulers.boundedElastic()))
+                .map(HttpEntity::getBody)
                 .collectList();
     }
 
     @CircuitBreaker(name = "vacancy-service")
-    public Mono<Void> addToFavorites(long userId, long vacancyId) {
-        return Mono.fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
+    public Mono<Object> addToFavorites(long userId, long vacancyId) {
+        return Mono
+                // check that vacancy exists
+                .fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
                 .subscribeOn(Schedulers.boundedElastic())
+                .map(qwe -> {
+                    log.warn(qwe.toString());
+                    return qwe;
+                })
+                .filter(vacancyResp -> vacancyResp.getStatusCode().is2xxSuccessful())
+                // if exists (not empty)
                 .then(getUserById(userId))
                 .flatMap(user -> Mono.fromCallable(() -> {
                     user.getFavoriteVacancyIds().add(vacancyId);
                     return userRepository.save(user);
-                })
-                        .subscribeOn(Schedulers.boundedElastic()))
-                .then();
+                }).subscribeOn(Schedulers.boundedElastic()));
     }
 
     public Mono<Void> removeFromFavorites(long userId, long vacancyId) {
@@ -115,13 +123,7 @@ public class UserServiceImpl implements UserService {
                 .flatMap(user -> Mono.fromCallable(() -> {
                     user.getFavoriteVacancyIds().remove(vacancyId);
                     return userRepository.save(user);
-                })
-                        .subscribeOn(Schedulers.boundedElastic()))
+                }).subscribeOn(Schedulers.boundedElastic()))
                 .then();
     }
-
-    public Mono<Void> respondToVacancyFallback() {
-        return Mono.error(new ServiceException(VACANCY_SERVICE_NOT_AVAILABLE));
-    }
-
 }

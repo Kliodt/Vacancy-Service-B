@@ -1,9 +1,7 @@
 package com.vacancy.user.service;
 
 import java.util.List;
-import java.util.Set;
 
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -84,38 +82,27 @@ public class UserServiceImpl implements UserService {
                 .then();
     }
 
-    public Mono<Set<Long>> getUserFavoriteVacancyIds(long id) {
+    public Mono<List<Long>> getUserFavoriteVacancyIds(long id) {
         return getUserById(id)
                 .map(User::getFavoriteVacancyIds);
     }
 
     @CircuitBreaker(name = "vacancy-service")
-    public Mono<List<Object>> getUserFavorites(long id) {
-        return getUserFavoriteVacancyIds(id)
-                .flatMapMany(Flux::fromIterable)
-                .flatMap(vacancyId -> Mono.fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
-                        .subscribeOn(Schedulers.boundedElastic()))
-                .map(HttpEntity::getBody)
-                .collectList();
+    private Object getVacancyById(Long vacancyId) {
+        return vacancyClient.getVacancyById(vacancyId);
     }
 
-    @CircuitBreaker(name = "vacancy-service")
-    public Mono<Object> addToFavorites(long userId, long vacancyId) {
-        return Mono
-                // check that vacancy exists
-                .fromCallable(() -> vacancyClient.getVacancyById(vacancyId))
-                .subscribeOn(Schedulers.boundedElastic())
-                .map(qwe -> {
-                    log.warn(qwe.toString());
-                    return qwe;
-                })
-                .filter(vacancyResp -> vacancyResp.getStatusCode().is2xxSuccessful())
-                // if exists (not empty)
-                .then(getUserById(userId))
-                .flatMap(user -> Mono.fromCallable(() -> {
-                    user.getFavoriteVacancyIds().add(vacancyId);
-                    return userRepository.save(user);
-                }).subscribeOn(Schedulers.boundedElastic()));
+    public Mono<Void> addToFavorites(long userId, long vacancyId) {
+        return getUserById(userId)
+                .flatMap(user -> Mono
+                        .fromCallable(() -> getVacancyById(vacancyId))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .onErrorMap(err -> new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена"))
+                        .flatMap(idk -> {
+                            user.getFavoriteVacancyIds().add(vacancyId);
+                            return Mono.just(userRepository.save(user));
+                        })
+                        .then());
     }
 
     public Mono<Void> removeFromFavorites(long userId, long vacancyId) {

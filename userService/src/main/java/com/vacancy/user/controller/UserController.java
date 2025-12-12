@@ -76,8 +76,8 @@ public class UserController {
 
     @Operation(summary = "Получить избранные вакансии пользователя")
     @GetMapping("/{userId}/favorite")
-    public Mono<ResponseEntity<List<Object>>> getUserFavorites(@PathVariable Long userId) {
-        return userService.getUserFavorites(userId)
+    public Mono<ResponseEntity<List<Long>>> getUserFavorites(@PathVariable Long userId) {
+        return userService.getUserFavoriteVacancyIds(userId)
                 .map(ResponseEntity::ok);
     }
 

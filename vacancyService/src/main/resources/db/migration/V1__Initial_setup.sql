@@ -1,5 +1,5 @@
 CREATE TABLE vacancy (
-    id BIGINT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     description VARCHAR(255) NOT NULL,
     long_description TEXT NOT NULL,
     max_salary INTEGER CHECK (max_salary >= 0),
@@ -8,7 +8,7 @@ CREATE TABLE vacancy (
 );
 
 CREATE TABLE user_vacancy_response (
-    id BIGINT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     response_date TIMESTAMP(6) WITH TIME ZONE NOT NULL,
     user_id BIGINT NOT NULL,
     vacancy_id BIGINT NOT NULL

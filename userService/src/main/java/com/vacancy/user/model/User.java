@@ -1,16 +1,28 @@
 package com.vacancy.user.model;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.HashSet;
-import java.util.Set;
 
 @Data
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -41,6 +53,6 @@ public class User {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_favorites", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "vacancy_id")
-    private Set<Long> favoriteVacancyIds = new HashSet<>(); // ID избранных вакансий
+    private List<Long> favoriteVacancyIds = new ArrayList<>(); // ID избранных вакансий
 
 }

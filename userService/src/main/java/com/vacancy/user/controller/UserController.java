@@ -83,18 +83,17 @@ public class UserController {
 
     @Operation(summary = "Добавить вакансию в избранное")
     @PutMapping("/{userId}/favorite/{vacancyId}")
-    public Mono<ResponseEntity<Void>> addToFavorites(@PathVariable Long userId, @PathVariable Long vacancyId) {
+    public Mono<ResponseEntity<Void>> addToFavorites(
+            @PathVariable Long userId,
+            @PathVariable Long vacancyId) {
         return userService.addToFavorites(userId, vacancyId)
-                .hasElement()
-                .flatMap(exists -> exists
-                        ? Mono.just(ResponseEntity.ok().build())
-                        : Mono.just(ResponseEntity.notFound().build()));
+                .thenReturn(ResponseEntity.noContent().build());
     }
 
     @Operation(summary = "Убрать вакансию из избранного")
     @DeleteMapping("/{userId}/favorite/{vacancyId}")
     public Mono<ResponseEntity<Void>> removeFromFavorites(@PathVariable Long userId, @PathVariable Long vacancyId) {
         return userService.removeFromFavorites(userId, vacancyId)
-                .thenReturn(ResponseEntity.ok().build());
+                .thenReturn(ResponseEntity.noContent().build());
     }
 }

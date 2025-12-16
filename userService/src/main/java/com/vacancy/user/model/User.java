@@ -55,4 +55,9 @@ public class User {
     @Column(name = "vacancy_id")
     private List<Long> favoriteVacancyIds = new ArrayList<>(); // ID избранных вакансий
 
+    public void updateWithOther(User other) {
+        this.setNickname(other.getNickname());
+        this.setEmail(other.getEmail());
+        this.setCvLink(other.getCvLink());
+    }
 }

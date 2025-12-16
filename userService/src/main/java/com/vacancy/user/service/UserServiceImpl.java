@@ -47,13 +47,11 @@ public class UserServiceImpl implements UserService {
 
     public Mono<User> createUser(User user) {
         return Mono.fromCallable(() -> {
-            if (userRepository.findUserByEmail(user.getEmail()) != null) {
-                throw new RequestException(HttpStatus.CONFLICT, "Пользователь с таким email уже зарегистрирован");
+            if (userRepository.findUserByEmail(user.getEmail()).isEmpty()) {
+                return userRepository.save(user);
             }
-            user.setId(0L);
-            return userRepository.save(user);
-        })
-                .subscribeOn(Schedulers.boundedElastic());
+            throw new RequestException(HttpStatus.CONFLICT, "Пользователь с таким email уже зарегистрирован");
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
     public Mono<User> updateUser(long id, User user) {
@@ -61,19 +59,14 @@ public class UserServiceImpl implements UserService {
             User existingUser = userRepository.findById(id)
                     .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND));
 
-            if (userRepository.findUserByEmail(user.getEmail()) != null
+            if (userRepository.findUserByEmail(user.getEmail()).isPresent()
                     && !existingUser.getEmail().equals(user.getEmail())) {
                 throw new RequestException(HttpStatus.CONFLICT,
                         "С таким email уже зарегистрирован другой пользователь");
             }
-
-            existingUser.setNickname(user.getNickname());
-            existingUser.setEmail(user.getEmail());
-            existingUser.setCvLink(user.getCvLink());
-
+            existingUser.updateWithOther(user);
             return userRepository.save(existingUser);
-        })
-                .subscribeOn(Schedulers.boundedElastic());
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
     public Mono<Void> deleteUser(long id) {
@@ -88,19 +81,21 @@ public class UserServiceImpl implements UserService {
     }
 
     @CircuitBreaker(name = "vacancy-service")
-    private Object getVacancyById(Long vacancyId) {
+    private Mono<Object> getVacancyById(Long vacancyId) {
         return vacancyClient.getVacancyById(vacancyId);
     }
 
     public Mono<Void> addToFavorites(long userId, long vacancyId) {
         return getUserById(userId)
-                .flatMap(user -> Mono
-                        .fromCallable(() -> getVacancyById(vacancyId))
-                        .subscribeOn(Schedulers.boundedElastic())
+                .onErrorMap(err -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND))
+                .flatMap(user -> getVacancyById(vacancyId)
                         .onErrorMap(err -> new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена"))
                         .flatMap(idk -> {
-                            user.getFavoriteVacancyIds().add(vacancyId);
-                            return Mono.just(userRepository.save(user));
+                            if (!user.getFavoriteVacancyIds().contains(vacancyId)) {
+                                user.getFavoriteVacancyIds().add(vacancyId);
+                            }
+                            return Mono.fromRunnable(() -> userRepository.save(user))
+                                    .subscribeOn(Schedulers.boundedElastic());
                         })
                         .then());
     }

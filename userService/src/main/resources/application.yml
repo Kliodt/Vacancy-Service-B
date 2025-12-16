@@ -19,3 +19,5 @@ spring:
     user: ${DB_USER}
     password: ${DB_PASS}
 
+  output:
+    ansi.enabled: ALWAYS

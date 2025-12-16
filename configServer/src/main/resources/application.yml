@@ -10,6 +10,9 @@ spring:
         git:
           uri: https://github.com/Kliodt/vacancy-app-config
           clone-on-start: true
+  output:
+    ansi:
+      enabled: ALWAYS
 
 management:
   endpoints:

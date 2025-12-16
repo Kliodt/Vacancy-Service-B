@@ -3,7 +3,7 @@ server:
 
 spring:
   r2dbc:
-    # url: r2dbc:postgresql://localhost:5432/vacancy
+    # url: r2dbc:postgresql://localhost:5432/organization_db
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASS}
@@ -13,3 +13,5 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  output:
+    ansi.enabled: ALWAYS

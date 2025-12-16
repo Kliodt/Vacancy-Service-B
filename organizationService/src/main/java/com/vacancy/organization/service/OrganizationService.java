@@ -1,7 +1,5 @@
 package com.vacancy.organization.service;
 
-import java.util.List;
-
 import com.vacancy.organization.model.Organization;
 
 import reactor.core.publisher.Flux;
@@ -13,7 +11,4 @@ public interface OrganizationService {
     Mono<Organization> createOrganization(Organization organization);
     Mono<Organization> updateOrganization(long id, Organization organization);
     Mono<Void> deleteOrganization(long id);
-    Mono<List<Long>> getOrganizationVacancies(long id);
-    Mono<Void> addVacancyToOrganization(long organizationId, long vacancyId);
-    Mono<Void> deleteOrganizationVacancy(long organizationId, long vacancyId);
 }

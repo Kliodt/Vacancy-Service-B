@@ -1,8 +1,5 @@
 package com.vacancy.organization.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -29,6 +26,9 @@ public class Organization {
     @Size(max = 100, message = "Email не может превышать 100 символов")
     private String email;
 
-    private List<Long> vacancyIds = new ArrayList<>();
+    public void updateWithOther(Organization other) {
+        this.setNickname(other.getNickname());
+        this.setEmail(other.getEmail());
+    }
 
 }

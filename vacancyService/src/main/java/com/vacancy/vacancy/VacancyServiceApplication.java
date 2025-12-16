@@ -1,18 +1,20 @@
 package com.vacancy.vacancy;
 
-import io.swagger.v3.oas.annotations.OpenAPIDefinition;
-import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.servers.Server;
-
 import java.util.List;
 
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.servers.Server;
 
 @SpringBootApplication
 @EnableDiscoveryClient
@@ -30,5 +32,18 @@ public class VacancyServiceApplication {
         return new OpenAPI()
                 .servers(List.of(new Server().url("http://localhost:8080")))
                 .info(new Info().title("Vacancy service API").version("1.0.0"));
+    }
+
+    @Bean
+    public ModelMapper modelMapper() {
+        ModelMapper modelMapper = new ModelMapper();
+        
+        // Основные настройки для предотвращения двойного маппирования
+        modelMapper.getConfiguration()
+            .setMatchingStrategy(MatchingStrategies.STRICT)
+            .setAmbiguityIgnored(true)
+            .setSkipNullEnabled(true);
+        
+        return modelMapper;
     }
 }

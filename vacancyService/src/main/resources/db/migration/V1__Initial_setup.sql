@@ -1,13 +1,13 @@
-CREATE TABLE vacancy (
+CREATE TABLE IF NOT EXISTS vacancy (
     id BIGSERIAL PRIMARY KEY,
-    description VARCHAR(255) NOT NULL,
-    long_description TEXT NOT NULL,
-    max_salary INTEGER CHECK (max_salary >= 0),
-    min_salary INTEGER CHECK (min_salary >= 0),
-    city VARCHAR(100)
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    salary INTEGER CHECK (salary >= 0),
+    city VARCHAR(100),
+    organization_id BIGINT
 );
 
-CREATE TABLE user_vacancy_response (
+CREATE TABLE IF NOT EXISTS user_vacancy_response (
     id BIGSERIAL PRIMARY KEY,
     response_date TIMESTAMP(6) WITH TIME ZONE NOT NULL,
     user_id BIGINT NOT NULL,

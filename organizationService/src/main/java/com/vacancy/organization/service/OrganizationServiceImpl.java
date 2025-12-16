@@ -1,23 +1,16 @@
 package com.vacancy.organization.service;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.vacancy.organization.client.VacancyClient;
 import com.vacancy.organization.exceptions.RequestException;
 import com.vacancy.organization.model.Organization;
 import com.vacancy.organization.repository.OrganizationRepository;
 
-import feign.FeignException;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 @Service
 @Slf4j
@@ -26,7 +19,6 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     private static final String ORGANIZATION_NOT_FOUND = "Организация не найдена";
     private final OrganizationRepository organizationRepository;
-    private final VacancyClient vacancyClient;
 
     public Flux<Organization> getAllOrganizations(int page, int size) {
         if (size > 50)
@@ -60,56 +52,13 @@ public class OrganizationServiceImpl implements OrganizationService {
                         })
                         .switchIfEmpty(Mono.just(existingOrganization))
                         .flatMap(org -> {
-                            existingOrganization.setNickname(organization.getNickname());
-                            existingOrganization.setEmail(organization.getEmail());
+                            existingOrganization.updateWithOther(organization);
                             return organizationRepository.save(existingOrganization);
                         }));
     }
 
     public Mono<Void> deleteOrganization(long id) {
         return organizationRepository.deleteById(id);
-    }
-
-    @CircuitBreaker(name = "vacancy-service")
-    public Object getVacancyById(long id) {
-        return vacancyClient.getVacancyById(id);
-    }
-
-    public Mono<List<Long>> getOrganizationVacancies(long id) {
-        return organizationRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORGANIZATION_NOT_FOUND)))
-                .map(org -> org.getVacancyIds());
-    }
-
-    public Mono<Void> addVacancyToOrganization(long organizationId, long vacancyId) {
-        return organizationRepository.findById(organizationId)
-                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORGANIZATION_NOT_FOUND)))
-                .flatMap(org -> Mono.fromCallable(() -> getVacancyById(vacancyId))
-                        .subscribeOn(Schedulers.boundedElastic())
-                        .onErrorMap(FeignException.NotFound.class,
-                                e -> new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена"))
-                        .flatMap(idk -> {
-                            List<Long> ids = org.getVacancyIds();
-                            if (!ids.contains(vacancyId)) {
-                                ids = new ArrayList<>(ids);
-                                ids.add(vacancyId);
-                                org.setVacancyIds(ids);
-                                return organizationRepository.save(org);
-                            }
-                            return Mono.just(org);
-                        }))
-                .then();
-    }
-
-    public Mono<Void> deleteOrganizationVacancy(long organizationId, long vacancyId) {
-        return organizationRepository.findById(organizationId)
-                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORGANIZATION_NOT_FOUND)))
-                .flatMap(org -> {
-                    List<Long> ids = org.getVacancyIds();
-                    ids.remove(vacancyId);
-                    org.setVacancyIds(ids);
-                    return organizationRepository.save(org).then();
-                });
     }
 
 }

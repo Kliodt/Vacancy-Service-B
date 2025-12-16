@@ -1,7 +1,5 @@
 package com.vacancy.organization.controller;
 
-import java.util.List;
-
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -76,27 +74,4 @@ public class OrganizationController {
                 .thenReturn(ResponseEntity.noContent().build());
     }
 
-    @Operation(summary = "Получить вакансии, размещенные организацией")
-    @GetMapping("/{orgId}/vacancies")
-    public Mono<ResponseEntity<List<Long>>> getOrganizationVacancies(@PathVariable Long orgId) {
-        return organizationService.getOrganizationVacancies(orgId).map(ResponseEntity::ok);
-    }
-
-    @Operation(summary = "Разместить вакансию")
-    @PostMapping("/{orgId}/vacancies/{vacancyId}")
-    public Mono<ResponseEntity<Void>> addVacancyToOrganization(
-            @PathVariable Long orgId,
-            @PathVariable Long vacancyId) {
-        return organizationService.addVacancyToOrganization(orgId, vacancyId)
-                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
-    }
-
-    @Operation(summary = "Убрать размещенную вакансию")
-    @DeleteMapping("/{orgId}/vacancies/{vacancyId}")
-    public Mono<ResponseEntity<Void>> deleteOrganizationVacancy(
-            @PathVariable Long orgId,
-            @PathVariable Long vacancyId) {
-        return organizationService.deleteOrganizationVacancy(orgId, vacancyId)
-                .thenReturn(ResponseEntity.noContent().build());
-    }
 }

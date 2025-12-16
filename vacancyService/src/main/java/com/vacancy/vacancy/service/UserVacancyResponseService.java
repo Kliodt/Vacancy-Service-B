@@ -8,6 +8,9 @@ import com.vacancy.vacancy.model.UserVacancyResponse;
 public interface UserVacancyResponseService {
     List<UserVacancyResponse> getUserResponses(long userId);
     List<UserVacancyResponse> getVacancyResponses(long vacancyId);
-    void deleteByUserIdAndVacancyId(long userId, long vacancyId);
-    UserVacancyResponse addOrReplaceResponse(UserVacancyResponse response);
+    List<UserVacancyResponse> getVacancyResponsesForUser(long userId, long vacancyId);
+
+    void respondToVacancy(long vacancyId, long userId);
+    void removeResponseFromVacancy(long vacancyId, long userId);
+
 }

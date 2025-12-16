@@ -24,19 +24,19 @@ import lombok.RequiredArgsConstructor;
 public class VacancyController {
 
     private final VacancyService vacancyService;
-    private final ModelMapper modelMapper = new ModelMapper();
+    private final ModelMapper modelMapper;
 
     @Operation(summary = "Получить все вакансии")
     @GetMapping
     public ResponseEntity<List<Vacancy>> getAllVacancies(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
-        
+
         Page<Vacancy> vacancyPage = vacancyService.getAllVacancies(page, size);
-        
+
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-Total-Count", String.valueOf(vacancyPage.getTotalElements()));
-        
+
         return ResponseEntity.ok().headers(headers).body(vacancyPage.getContent());
     }
 
@@ -46,11 +46,17 @@ public class VacancyController {
         return ResponseEntity.ok(vacancyService.getVacancyById(vacancyId));
     }
 
+    @Operation(summary = "Получить все вакансии по id организации")
+    @GetMapping("/organization/{organizationId}")
+    public ResponseEntity<List<Vacancy>> getVacancyByOrganization(@PathVariable Long organizationId) {
+        return ResponseEntity.ok(vacancyService.getVacanciesByOrganization(organizationId));
+    }
+
     @Operation(summary = "Создать вакансию")
     @PostMapping
     public ResponseEntity<Vacancy> createVacancy(@Valid @RequestBody VacancyDtoIn vacancy) {
         Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
-        return ResponseEntity.status(HttpStatus.CREATED).body(vacancyService.saveVacancy(vac));
+        return ResponseEntity.status(HttpStatus.CREATED).body(vacancyService.createVacancy(vac));
     }
 
     @Operation(summary = "Обновить вакансию")
@@ -59,8 +65,7 @@ public class VacancyController {
             @PathVariable Long vacancyId,
             @Valid @RequestBody VacancyDtoIn vacancy) {
         Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
-        vac.setId(vacancyId);
-        return ResponseEntity.ok(vacancyService.saveVacancy(vac));
+        return ResponseEntity.ok(vacancyService.updateVacancy(vacancyId, vac));
     }
 
     @Operation(summary = "Удалить вакансию")

@@ -7,25 +7,23 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import com.vacancy.vacancy.client.UserClient;
+import com.vacancy.vacancy.client.OrganizationClient;
 import com.vacancy.vacancy.exceptions.RequestException;
-import com.vacancy.vacancy.model.UserVacancyResponse;
 import com.vacancy.vacancy.model.Vacancy;
-import com.vacancy.vacancy.repository.UserVacancyResponseRepository;
 import com.vacancy.vacancy.repository.VacancyRepository;
 
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class VacancyServiceImpl implements VacancyService {
 
     private final VacancyRepository vacancyRepository;
-    private final UserVacancyResponseRepository responseRepository;
-    private final UserClient userClient;
+    private final OrganizationClient organizationClient;
 
     public Page<Vacancy> getAllVacancies(int page, int size) {
         if (size > 50) {
@@ -44,33 +42,34 @@ public class VacancyServiceImpl implements VacancyService {
         vacancyRepository.deleteById(id);
     }
 
-    @CircuitBreaker(name = "user-service")
-    @Transactional
-    public void respondToVacancy(long vacancyId, long userId) {
-        userClient.getUserById(userId);
-        getVacancyById(vacancyId);
-        responseRepository.save(new UserVacancyResponse(userId, vacancyId));
+    public List<Vacancy> getVacanciesByOrganization(long id) {
+        return vacancyRepository.findByOrganizationId(id);
     }
 
-    @Transactional
-    public void removeResponseFromVacancy(long vacancyId, long userId) {
-        responseRepository.deleteByUserIdAndVacancyId(userId, vacancyId);
+    public Vacancy updateVacancy(long id, Vacancy vacancy) {
+        Vacancy oldVac = vacancyRepository.findById(id).orElse(null);
+        if (oldVac == null)
+            throw new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена");
+
+        try {
+            organizationClient.getOrganizationById(vacancy.getOrganizationId());
+        } catch (FeignException e) {
+            throw new RequestException(HttpStatus.NOT_FOUND, "Организация не найдена");
+        }
+
+        oldVac.updateWithOther(vacancy);
+
+        return vacancyRepository.save(oldVac);
     }
 
-    public Vacancy saveVacancy(Vacancy vacancy) {
+    public Vacancy createVacancy(Vacancy vacancy) {
+        try {
+            organizationClient.getOrganizationById(vacancy.getOrganizationId());
+        } catch (FeignException e) {
+            throw new RequestException(HttpStatus.NOT_FOUND, "Организация не найдена");
+        }
+        log.warn("Vacancy: {}", vacancy);
         return vacancyRepository.save(vacancy);
-    }
-
-    public List<UserVacancyResponse> getVacancyResponses(long vacancyId) {
-        return responseRepository.findByVacancyId(vacancyId);
-    }
-
-    public List<UserVacancyResponse> getUserResponses(long userId) {
-        return responseRepository.findByUserId(userId);
-    }
-
-    public List<UserVacancyResponse> getVacancyResponsesForUser(long userId, long vacancyId) {
-        return responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
     }
 
 }

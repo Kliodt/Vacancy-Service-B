@@ -2,12 +2,18 @@ package com.vacancy.vacancy.service;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.vacancy.vacancy.client.UserClient;
+import com.vacancy.vacancy.exceptions.RequestException;
 import com.vacancy.vacancy.model.UserVacancyResponse;
 import com.vacancy.vacancy.repository.UserVacancyResponseRepository;
+import com.vacancy.vacancy.repository.VacancyRepository;
 
+import feign.FeignException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -15,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 public class UserVacancyResponseServiceImpl implements UserVacancyResponseService {
 
     private final UserVacancyResponseRepository responseRepository;
+    private final VacancyRepository vacancyRepository;
+    private final UserClient userClient;
 
     @Transactional(readOnly = true)
     public List<UserVacancyResponse> getUserResponses(long userId) {
@@ -26,19 +34,32 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
         return responseRepository.findByVacancyId(vacancyId);
     }
 
-    public void deleteByUserIdAndVacancyId(long userId, long vacancyId) {
-        responseRepository.deleteByUserIdAndVacancyId(userId, vacancyId);
+    @Transactional(readOnly = true)
+    public List<UserVacancyResponse> getVacancyResponsesForUser(long userId, long vacancyId) {
+        return responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
     }
 
     @Transactional
-    public UserVacancyResponse addOrReplaceResponse(UserVacancyResponse response) {
-        Long vacancyId = response.getVacancyId();
-        Long userId = response.getUserId();
+    public void removeResponseFromVacancy(long vacancyId, long userId) {
+        responseRepository.deleteByUserIdAndVacancyId(userId, vacancyId);
+    }
+
+    @CircuitBreaker(name = "user-service")
+    @Transactional
+    public void respondToVacancy(long vacancyId, long userId) {
+        try {
+            userClient.getUserById(userId);
+        } catch (FeignException e) {
+            throw new RequestException(HttpStatus.NOT_FOUND, "Пользователь на найден");
+        }
+        if (vacancyRepository.findById(vacancyId).isEmpty()) {
+            throw new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена");
+        }
         List<UserVacancyResponse> existing = responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
-        if (existing != null) {
+        if (existing != null && !existing.isEmpty()) {
             responseRepository.deleteAll(existing);
         }
-        return responseRepository.save(response);
+        responseRepository.save(new UserVacancyResponse(userId, vacancyId));
     }
 
 }

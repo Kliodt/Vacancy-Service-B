@@ -68,7 +68,6 @@ public class VacancyServiceImpl implements VacancyService {
         } catch (FeignException e) {
             throw new RequestException(HttpStatus.NOT_FOUND, "Организация не найдена");
         }
-        log.warn("Vacancy: {}", vacancy);
         return vacancyRepository.save(vacancy);
     }
 

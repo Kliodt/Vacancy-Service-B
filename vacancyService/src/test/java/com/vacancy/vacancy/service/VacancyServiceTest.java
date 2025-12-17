@@ -2,6 +2,8 @@ package com.vacancy.vacancy.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
@@ -12,17 +14,27 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import com.vacancy.vacancy.client.OrganizationClient;
+import com.vacancy.vacancy.exceptions.RequestException;
 import com.vacancy.vacancy.model.Vacancy;
 import com.vacancy.vacancy.repository.UserVacancyResponseRepository;
 import com.vacancy.vacancy.repository.VacancyRepository;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "spring.cloud.config.enabled=false")
+/*
+Bugfixes:
+fix 1 (test containers): https://github.com/testcontainers/testcontainers-java/issues/11212#issuecomment-3518584924
+fix 2 (vscode test runner): https://github.com/microsoft/vscode-java-test/issues/1714
+*/
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "spring.cloud.config.enabled=false", "eureka.client.enabled=false" })
+@ActiveProfiles("test")
 class VacancyServiceTest {
 
     @LocalServerPort
@@ -77,6 +89,99 @@ class VacancyServiceTest {
 
         // Mock beans
         when(organizationClient.getOrganizationById(anyLong())).thenReturn(new Object());
+    }
+
+    @Test
+    void testGetAllVacancies() {
+        Vacancy another = new Vacancy("DevOps", "CI/CD");
+        another.setOrganizationId(1L);
+        another.setSalary(120000);
+        another.setCity("Moscow");
+        vacancyRepository.save(another);
+
+        var page = vacancyService.getAllVacancies(0, 10);
+        assertNotNull(page);
+        assertEquals(2, page.getTotalElements());
+    }
+
+    @Test
+    void testDeleteVacancy() {
+        Long id = testVacancy.getId();
+        vacancyService.deleteVacancy(id);
+        assertEquals(0, vacancyRepository.count());
+    }
+
+    @Test
+    void testUpdateVacancy() {
+        Vacancy updated = new Vacancy("Updated", "Updated desc");
+        updated.setOrganizationId(1L);
+        updated.setSalary(200000);
+        updated.setCity("Kazan");
+
+        Vacancy result = vacancyService.updateVacancy(testVacancy.getId(), updated);
+        assertNotNull(result);
+        assertEquals("Updated", result.getTitle());
+        assertEquals("Updated desc", result.getDescription());
+        assertEquals(Integer.valueOf(200000), result.getSalary());
+        assertEquals("Kazan", result.getCity());
+    }
+
+    @Test
+    void testGetVacanciesByOrganization() {
+        Vacancy another = new Vacancy("QA", "desc");
+        another.setOrganizationId(1L);
+        another.setSalary(90000);
+        another.setCity("Moscow");
+        vacancyRepository.save(another);
+
+        var list = vacancyService.getVacanciesByOrganization(1L);
+        assertNotNull(list);
+        assertEquals(2, list.size());
+    }
+
+    @Test
+    void testGetAllVacancies_SizeLimitAndPageOutOfRange() {
+        // create many vacancies to exceed size limit
+        for (int i = 0; i < 60; i++) {
+            Vacancy v = new Vacancy("Bulk" + i, "desc");
+            v.setOrganizationId(2L);
+            v.setSalary(50000 + i);
+            v.setCity("City");
+            vacancyRepository.save(v);
+        }
+
+        // request with size > 50 should be capped to 50
+        var page = vacancyService.getAllVacancies(0, 100);
+        assertNotNull(page);
+        assertTrue(page.getSize() <= 50);
+
+        // request page beyond last should return empty content
+        var emptyPage = vacancyService.getAllVacancies(100, 10);
+        assertNotNull(emptyPage);
+        assertTrue(emptyPage.isEmpty());
+    }
+
+    @Test
+    void testUpdateVacancy_NotFound() {
+        // update with non-existing id should throw RequestException
+        Vacancy upd = new Vacancy("X", "Y");
+        upd.setOrganizationId(1L);
+        assertThrows(RequestException.class, () -> {
+            vacancyService.updateVacancy(999999L, upd);
+        });
+    }
+
+    @Test
+    void testGetVacanciesByOrganization_Empty() {
+        var list = vacancyService.getVacanciesByOrganization(9999L);
+        assertNotNull(list);
+        assertTrue(list.isEmpty());
+    }
+
+    @Test
+    void testDeleteVacancy_NonExistentDoesNotThrow() {
+        vacancyService.deleteVacancy(123456789L);
+        assertEquals(1, vacancyRepository.count());
     }
 
     @Test

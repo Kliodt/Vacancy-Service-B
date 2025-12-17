@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -25,6 +29,11 @@ import com.vacancy.vacancy.exceptions.RequestException;
 import com.vacancy.vacancy.model.Vacancy;
 import com.vacancy.vacancy.repository.UserVacancyResponseRepository;
 import com.vacancy.vacancy.repository.VacancyRepository;
+
+import feign.FeignException;
+import feign.Request;
+import feign.Request.HttpMethod;
+import feign.RequestTemplate;
 
 /*
 Bugfixes:
@@ -88,7 +97,15 @@ class VacancyServiceTest {
         assertNotNull(testVacancy);
 
         // Mock beans
-        when(organizationClient.getOrganizationById(anyLong())).thenReturn(new Object());
+        when(organizationClient.getOrganizationById(anyLong()))
+                .thenAnswer(invocation -> {
+                    Long x = invocation.getArgument(0);
+                    if (x < 100L)
+                        return new Object();
+                    Request fakeReq = Request.create(HttpMethod.GET, "/", Collections.emptyMap(), null,
+                            StandardCharsets.UTF_8, new RequestTemplate());
+                    throw new FeignException.NotFound("Not found", fakeReq, null, null);
+                });
     }
 
     @Test
@@ -162,13 +179,26 @@ class VacancyServiceTest {
     }
 
     @Test
-    void testUpdateVacancy_NotFound() {
-        // update with non-existing id should throw RequestException
+    void testUpdateVacancy_NotExistingVacancyThrows() {
         Vacancy upd = new Vacancy("X", "Y");
         upd.setOrganizationId(1L);
-        assertThrows(RequestException.class, () -> {
+        RequestException ex = assertThrows(RequestException.class, () -> {
             vacancyService.updateVacancy(999999L, upd);
         });
+        assertEquals(HttpStatus.NOT_FOUND, ex.code);
+        assertEquals("Вакансия не найдена", ex.getMessage());
+    }
+
+    @Test
+    void testUpdateVacancy_NotExistingOrganizationThrows() {
+        Vacancy upd = new Vacancy("X", "Y");
+        Long vacId = testVacancy.getId();
+        upd.setOrganizationId(200L);
+        RequestException ex = assertThrows(RequestException.class, () -> {
+            vacancyService.updateVacancy(vacId, upd);
+        });
+        assertEquals(HttpStatus.NOT_FOUND, ex.code);
+        assertEquals("Организация не найдена", ex.getMessage());
     }
 
     @Test
@@ -197,7 +227,7 @@ class VacancyServiceTest {
     }
 
     @Test
-    void createVacancyTest() {
+    void testCreateVacancy() {
         Vacancy newVacancy = new Vacancy("QA Engineer", "Test software");
         newVacancy.setOrganizationId(2L);
         newVacancy.setSalary(80000);
@@ -215,6 +245,17 @@ class VacancyServiceTest {
         Vacancy fromDb = vacancyRepository.findById(created.getId()).orElse(null);
         assertNotNull(fromDb);
         assertEquals("QA Engineer", fromDb.getTitle());
+    }
+
+    @Test
+    void testCreateVacancy_NotExistingOrganizationThrows() {
+        Vacancy newVacancy = new Vacancy("QA Engineer", "Test software");
+        newVacancy.setOrganizationId(200L);
+        newVacancy.setSalary(80000);
+        newVacancy.setCity("Saint Petersburg");
+        RequestException ex = assertThrows(
+                RequestException.class, () -> vacancyService.createVacancy(newVacancy));
+        assertEquals(HttpStatus.NOT_FOUND, ex.code);
     }
 
 }

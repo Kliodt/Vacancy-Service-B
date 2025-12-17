@@ -56,7 +56,7 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
             throw new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена");
         }
         List<UserVacancyResponse> existing = responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
-        if (existing != null && !existing.isEmpty()) {
+        if (!existing.isEmpty()) {
             responseRepository.deleteAll(existing);
         }
         responseRepository.save(new UserVacancyResponse(userId, vacancyId));

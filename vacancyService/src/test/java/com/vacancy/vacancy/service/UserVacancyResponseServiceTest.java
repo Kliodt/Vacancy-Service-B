@@ -1,11 +1,14 @@
 package com.vacancy.vacancy.service;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -14,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -27,12 +31,16 @@ import com.vacancy.vacancy.model.Vacancy;
 import com.vacancy.vacancy.repository.UserVacancyResponseRepository;
 import com.vacancy.vacancy.repository.VacancyRepository;
 
+import feign.FeignException;
+import feign.Request;
+import feign.RequestTemplate;
+import feign.Request.HttpMethod;
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-    "spring.cloud.config.enabled=false", "eureka.client.enabled=false" })
+        "spring.cloud.config.enabled=false", "eureka.client.enabled=false" })
 @ActiveProfiles("test")
 class UserVacancyResponseServiceTest {
-    
-    
+
     @LocalServerPort
     private Integer port;
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17");
@@ -84,12 +92,15 @@ class UserVacancyResponseServiceTest {
         assertNotNull(testVacancy);
 
         // Mock beans
-        when(userClient.getUserById(anyLong())).thenReturn(new Object());
-    }
-
-    @Test
-    void simpleTest() {
-        assertTrue(true);
+        when(userClient.getUserById(anyLong()))
+                .thenAnswer(invocation -> {
+                    Long id = invocation.getArgument(0);
+                    if (id < 100L)
+                        return new Object();
+                    Request fakeReq = Request.create(HttpMethod.GET, "/", Collections.emptyMap(), null,
+                            StandardCharsets.UTF_8, new RequestTemplate());
+                    throw new FeignException.NotFound("Not found", fakeReq, null, null);
+                });
     }
 
     @Test
@@ -116,6 +127,26 @@ class UserVacancyResponseServiceTest {
     }
 
     @Test
+    void testRespondToVacancy_UserNotFound() {
+        long missingUserId = 200L;
+        long vacancyId = testVacancy.getId();
+        RequestException ex = assertThrows(RequestException.class,
+                () -> responseService.respondToVacancy(vacancyId, missingUserId));
+        assertEquals(HttpStatus.NOT_FOUND, ex.code);
+    }
+
+    @Test
+    void testRespondToVacancy_DontDuplicate() {
+        long userId = 5L;
+        long vacancyId = testVacancy.getId();
+        assertEquals(0, responseRepository.count());
+        responseService.respondToVacancy(vacancyId, userId);
+        responseService.respondToVacancy(vacancyId, userId);
+        responseService.respondToVacancy(vacancyId, userId);
+        assertEquals(1, responseRepository.count());
+    }
+
+    @Test
     void testRemoveResponseFromVacancy() {
         long userId = 11L;
         long vacancyId = testVacancy.getId();
@@ -136,7 +167,7 @@ class UserVacancyResponseServiceTest {
         long userA = 21L;
         long userB = 22L;
         long vacancyA = testVacancy.getId();
-        Vacancy vac2 = new Vacancy("X","Y");
+        Vacancy vac2 = new Vacancy("X", "Y");
         vac2.setOrganizationId(1L);
         vac2.setSalary(50000);
         vac2.setCity("City");
@@ -159,8 +190,5 @@ class UserVacancyResponseServiceTest {
         assertNotNull(specific);
         assertEquals(1, specific.size());
     }
-
-
-
 
 }

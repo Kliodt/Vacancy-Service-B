@@ -8,12 +8,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.vacancy.vacancy.client.OrganizationClient;
+import com.vacancy.vacancy.client.Clients;
 import com.vacancy.vacancy.exceptions.RequestException;
 import com.vacancy.vacancy.model.Vacancy;
 import com.vacancy.vacancy.repository.VacancyRepository;
 
-import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 public class VacancyServiceImpl implements VacancyService {
 
     private final VacancyRepository vacancyRepository;
-    private final OrganizationClient organizationClient;
+    private final Clients clients;
 
     public Page<Vacancy> getAllVacancies(int page, int size) {
         if (size > 50) {
@@ -52,8 +51,8 @@ public class VacancyServiceImpl implements VacancyService {
             throw new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена");
 
         try {
-            organizationClient.getOrganizationById(vacancy.getOrganizationId());
-        } catch (FeignException e) {
+            clients.getOrganizationById(vacancy.getOrganizationId());
+        } catch (Exception e) {
             throw new RequestException(HttpStatus.NOT_FOUND, "Организация не найдена");
         }
 
@@ -64,8 +63,8 @@ public class VacancyServiceImpl implements VacancyService {
 
     public Vacancy createVacancy(Vacancy vacancy) {
         try {
-            organizationClient.getOrganizationById(vacancy.getOrganizationId());
-        } catch (FeignException e) {
+            clients.getOrganizationById(vacancy.getOrganizationId());
+        } catch (Exception e) {
             throw new RequestException(HttpStatus.NOT_FOUND, "Организация не найдена");
         }
         return vacancyRepository.save(vacancy);

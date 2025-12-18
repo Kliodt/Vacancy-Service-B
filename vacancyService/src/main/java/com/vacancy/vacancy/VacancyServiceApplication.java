@@ -37,13 +37,14 @@ public class VacancyServiceApplication {
     @Bean
     public ModelMapper modelMapper() {
         ModelMapper modelMapper = new ModelMapper();
-        
+
         // Основные настройки для предотвращения двойного маппирования
         modelMapper.getConfiguration()
-            .setMatchingStrategy(MatchingStrategies.STRICT)
-            .setAmbiguityIgnored(true)
-            .setSkipNullEnabled(true);
-        
+                .setMatchingStrategy(MatchingStrategies.STRICT)
+                .setAmbiguityIgnored(true)
+                .setSkipNullEnabled(true);
+
         return modelMapper;
     }
+
 }

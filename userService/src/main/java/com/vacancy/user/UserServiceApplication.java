@@ -13,6 +13,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.ConversionService;
 
 import feign.Contract;
+import feign.FeignException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
@@ -42,4 +46,13 @@ public class UserServiceApplication {
         // for feign
         return new SpringMvcContract(new ArrayList<>(), conversionService);
     }
+
+    @Bean
+    public CircuitBreaker configVacancyServiceCB(CircuitBreakerRegistry registry) {
+        CircuitBreakerConfig config = CircuitBreakerConfig.custom()
+                .ignoreExceptions(FeignException.NotFound.class)
+                .build();
+        return registry.circuitBreaker("vacancy-service", config);
+    }
+
 }

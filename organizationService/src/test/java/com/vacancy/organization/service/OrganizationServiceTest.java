@@ -15,10 +15,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-import com.vacancy.organization.client.VacancyClient;
 import com.vacancy.organization.exceptions.RequestException;
 import com.vacancy.organization.model.Organization;
 import com.vacancy.organization.repository.OrganizationRepository;
@@ -38,8 +36,6 @@ class OrganizationServiceTest {
     OrganizationRepository organizationRepository;
     @Autowired
     OrganizationService organizationService;
-    @MockitoBean
-    private VacancyClient vacancyClient;
 
     private Organization testOrganization;
 

@@ -5,12 +5,11 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.vacancy.user.client.VacancyClient;
+import com.vacancy.user.client.Clients;
 import com.vacancy.user.exceptions.RequestException;
 import com.vacancy.user.model.User;
 import com.vacancy.user.repository.UserRepository;
 
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
@@ -25,7 +24,7 @@ public class UserServiceImpl implements UserService {
     private static final String USER_NOT_FOUND = "Пользователь не найден";
 
     private final UserRepository userRepository;
-    private final VacancyClient vacancyClient;
+    private final Clients clients;
 
     public Flux<User> getAllUsers(int page, int size) {
         if (size > 50)
@@ -80,15 +79,10 @@ public class UserServiceImpl implements UserService {
                 .map(User::getFavoriteVacancyIds);
     }
 
-    @CircuitBreaker(name = "vacancy-service")
-    private Mono<Object> getVacancyById(Long vacancyId) {
-        return vacancyClient.getVacancyById(vacancyId);
-    }
-
     public Mono<Void> addToFavorites(long userId, long vacancyId) {
         return getUserById(userId)
                 .onErrorMap(err -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND))
-                .flatMap(user -> getVacancyById(vacancyId)
+                .flatMap(user -> clients.getVacancyById(vacancyId)
                         .onErrorMap(err -> new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена"))
                         .flatMap(idk -> {
                             if (!user.getFavoriteVacancyIds().contains(vacancyId)) {

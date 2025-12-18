@@ -6,14 +6,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.vacancy.vacancy.client.UserClient;
+import com.vacancy.vacancy.client.Clients;
 import com.vacancy.vacancy.exceptions.RequestException;
 import com.vacancy.vacancy.model.UserVacancyResponse;
 import com.vacancy.vacancy.repository.UserVacancyResponseRepository;
 import com.vacancy.vacancy.repository.VacancyRepository;
 
-import feign.FeignException;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -22,7 +20,7 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
 
     private final UserVacancyResponseRepository responseRepository;
     private final VacancyRepository vacancyRepository;
-    private final UserClient userClient;
+    private final Clients clients;
 
     @Transactional(readOnly = true)
     public List<UserVacancyResponse> getUserResponses(long userId) {
@@ -44,13 +42,11 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
         responseRepository.deleteByUserIdAndVacancyId(userId, vacancyId);
     }
 
-    @CircuitBreaker(name = "user-service")
-    @Transactional
     public void respondToVacancy(long vacancyId, long userId) {
         try {
-            userClient.getUserById(userId);
-        } catch (FeignException e) {
-            throw new RequestException(HttpStatus.NOT_FOUND, "Пользователь на найден");
+            clients.getUserById(userId);
+        } catch (Exception e) {
+            throw new RequestException(HttpStatus.NOT_FOUND, "Пользователь не найден");
         }
         if (vacancyRepository.findById(vacancyId).isEmpty()) {
             throw new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена");

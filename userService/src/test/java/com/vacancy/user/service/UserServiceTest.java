@@ -189,4 +189,28 @@ class UserServiceTest {
         assertTrue(!afterRemove.getFavoriteVacancyIds().contains(42L));
     }
 
+    @Test
+    void addToFavorites_vacancyNotFound() {
+        // mock vacancy client to return an error (vacancy not found)
+        when(vacancyClient.getVacancyById(anyLong())).thenReturn(Mono.error(new RuntimeException("not found")));
+
+        StepVerifier.create(userService.addToFavorites(testUser.getId(), 9999L))
+                .expectErrorSatisfies(e -> {
+                    assertTrue(e instanceof RequestException);
+                    assertEquals(HttpStatus.NOT_FOUND, ((RequestException) e).code);
+                })
+                .verify();
+    }
+
+    @Test
+    void addToFavorites_userNotFound() {
+        // no user with given id
+        StepVerifier.create(userService.addToFavorites(999999L, 1L))
+                .expectErrorSatisfies(e -> {
+                    assertTrue(e instanceof RequestException);
+                    assertEquals(HttpStatus.NOT_FOUND, ((RequestException) e).code);
+                })
+                .verify();
+    }
+
 }

@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
-    cv_link VARCHAR(512) NOT NULL,
+    cv_link VARCHAR(512),
     email VARCHAR(100) NOT NULL UNIQUE,
     nickname VARCHAR(50) NOT NULL
 );

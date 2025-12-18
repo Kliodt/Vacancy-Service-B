@@ -46,7 +46,7 @@ public class User {
     @Size(max = 100, message = "Email не может превышать 100 символов")
     private @NotNull String email;
 
-    @Column(nullable = false, length = 512)
+    @Column(nullable = true, length = 512)
     @Size(max = 512, message = "CV Link не может превышать 512 символов")
     private @Nullable String cvLink;
 

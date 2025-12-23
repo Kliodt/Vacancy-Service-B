@@ -1,40 +1,56 @@
 version: '3.8'
 
+networks:
+  backend-net:
+    internal: true
+  public-net:
+    driver: bridge
+
 services:
 
   config-server:
     image: config-server:latest
     container_name: config_server_container
-    ports:
-      - "8888:8888"
     restart: no
+    networks:
+      - backend-net
+      - public-net
+    expose:
+      - "8888"
 
   eureka-server:
     image: eureka-server:latest
     container_name: eureka_server_container
-    ports:
-      - "8761:8761"
     restart: no
+    networks:
+      - backend-net
+    expose:
+      - "8761"
 
   gateway-service:
     image: gateway-service:latest
     container_name: gateway_service_container
-    ports:
-      - "8080:8080"
     restart: no
     depends_on:
       - eureka-server
+    networks:
+      - backend-net
+      - public-net
+    ports:
+      - "8080:8080"   # ✅ единственный внешний порт
 
   organization-service:
     image: organization-service:latest
     container_name: organization_service_container
-    ports:
-      - "8081:8081"
     restart: no
     depends_on:
       - eureka-server
       - config-server
       - organization-db
+    networks:
+      - backend-net
+    expose:
+      - "8081"
     environment:
       DB_URL: r2dbc:postgresql://organization-db:5432/${DB_ORG_NAME}
       DB_URL_2: jdbc:postgresql://organization-db:5432/${DB_ORG_NAME}
@@ -45,8 +61,10 @@ services:
     image: postgres:17
     container_name: organization_db_container
     restart: no
-    ports:
-      - "5433:5432"
+    networks:
+      - backend-net
+    expose:
+      - "5432"
     environment:
       POSTGRES_USER: ${DB_ORG_USER}
       POSTGRES_PASSWORD: ${DB_ORG_PASS}
@@ -57,13 +75,15 @@ services:
   user-service:
     image: user-service:latest
     container_name: user_service_container
-    ports:
-      - "8082:8082"
     restart: no
     depends_on:
       - eureka-server
       - config-server
       - user-db
+    networks:
+      - backend-net
+    expose:
+      - "8082"
     environment:
       DB_URL: jdbc:postgresql://user-db:5432/${DB_USER_NAME}
       DB_USER: ${DB_USER_USER}
@@ -73,8 +93,10 @@ services:
     image: postgres:17
     container_name: user_db_container
     restart: no
-    ports:
-      - "5434:5432"
+    networks:
+      - backend-net
+    expose:
+      - "5432"
     environment:
       POSTGRES_USER: ${DB_USER_USER}
       POSTGRES_PASSWORD: ${DB_USER_PASS}
@@ -85,13 +107,15 @@ services:
   vacancy-service:
     image: vacancy-service:latest
     container_name: vacancy_service_container
-    ports:
-      - "8083:8083"
     restart: no
     depends_on:
       - eureka-server
       - config-server
       - vacancy-db
+    networks:
+      - backend-net
+    expose:
+      - "8083"
     environment:
       DB_URL: jdbc:postgresql://vacancy-db:5432/${DB_VACANCY_NAME}
       DB_USER: ${DB_VACANCY_USER}
@@ -101,8 +125,10 @@ services:
     image: postgres:17
     container_name: vacancy_db_container
     restart: no
-    ports:
-      - "5435:5432"
+    networks:
+      - backend-net
+    expose:
+      - "5432"
     environment:
       POSTGRES_USER: ${DB_VACANCY_USER}
       POSTGRES_PASSWORD: ${DB_VACANCY_PASS}

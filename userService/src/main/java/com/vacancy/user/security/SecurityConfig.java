@@ -3,6 +3,7 @@ package com.vacancy.user.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
@@ -12,6 +13,7 @@ import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
 
 import lombok.RequiredArgsConstructor;
 
@@ -51,7 +53,6 @@ public class SecurityConfig {
                             exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
                             return exchange.getResponse().setComplete();
                         }))
-
                 .authorizeExchange(ex -> ex
                         .pathMatchers(
                                 "/auth/**",
@@ -64,4 +65,18 @@ public class SecurityConfig {
 
                 .build();
     }
+
+    @Bean
+    public AuthenticationWebFilter authenticationWebFilter(ReactiveAuthenticationManager authManager) {
+        AuthenticationWebFilter filter = new AuthenticationWebFilter(authManager);
+
+        filter.setAuthenticationFailureHandler((webFilterExchange, exception) -> {
+            ServerHttpResponse response = webFilterExchange.getExchange().getResponse();
+            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+            return response.setComplete();
+        });
+
+        return filter;
+    }
+
 }

@@ -136,7 +136,7 @@ class UserServiceTest {
     void updateUser_notFound_conflict_success() {
         // not found
         User upd = new User("X", "x@example.com", "pass");
-        StepVerifier.create(userService.updateUser(999999L, upd))
+        StepVerifier.create(userService.updateUser(999999L, upd, 999999L))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.NOT_FOUND, ((RequestException) e).code);
@@ -147,7 +147,7 @@ class UserServiceTest {
         User another = new User("Another", "another@example.com", "pass");
         another = userRepository.save(another);
         User conflictUpdate = new User("AnotherUpdated", testUser.getEmail(), "pass");
-        StepVerifier.create(userService.updateUser(another.getId(), conflictUpdate))
+        StepVerifier.create(userService.updateUser(another.getId(), conflictUpdate, another.getId()))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.CONFLICT, ((RequestException) e).code);
@@ -156,20 +156,20 @@ class UserServiceTest {
 
         // success
         User successUpdate = new User("Updated", "updated@example.com", "pass");
-        StepVerifier.create(userService.updateUser(testUser.getId(), successUpdate))
+        StepVerifier.create(userService.updateUser(testUser.getId(), successUpdate, testUser.getId()))
                 .expectNextMatches(u -> u.getEmail().equals("updated@example.com") && u.getNickname().equals("Updated"))
                 .verifyComplete();
     }
 
     @Test
     void deleteUser_completes() {
-        StepVerifier.create(userService.deleteUser(testUser.getId())).verifyComplete();
+        StepVerifier.create(userService.deleteUser(testUser.getId(), testUser.getId())).verifyComplete();
     }
 
     @Test
     void favorites_add_and_remove_flow() {
         // initially empty
-        StepVerifier.create(userService.getUserFavoriteVacancyIds(testUser.getId()))
+        StepVerifier.create(userService.getUserFavoriteVacancyIds(testUser.getId(), testUser.getId()))
                 .expectNextMatches(Collection::isEmpty)
                 .verifyComplete();
 
@@ -177,14 +177,14 @@ class UserServiceTest {
         when(vacancyClient.getVacancyById(anyLong())).thenReturn(Mono.just(new Object()));
 
         // add to favorites
-        StepVerifier.create(userService.addToFavorites(testUser.getId(), 42L)).verifyComplete();
+        StepVerifier.create(userService.addToFavorites(testUser.getId(), 42L, testUser.getId())).verifyComplete();
 
         // verify persisted
         User afterAdd = userRepository.findById(testUser.getId()).orElseThrow();
         assertTrue(afterAdd.getFavoriteVacancyIds().contains(42L));
 
         // remove
-        StepVerifier.create(userService.removeFromFavorites(testUser.getId(), 42L)).verifyComplete();
+        StepVerifier.create(userService.removeFromFavorites(testUser.getId(), 42L, testUser.getId())).verifyComplete();
         User afterRemove = userRepository.findById(testUser.getId()).orElseThrow();
         assertTrue(!afterRemove.getFavoriteVacancyIds().contains(42L));
     }
@@ -194,7 +194,7 @@ class UserServiceTest {
         // mock vacancy client to return an error (vacancy not found)
         when(vacancyClient.getVacancyById(anyLong())).thenReturn(Mono.error(new RuntimeException("not found")));
 
-        StepVerifier.create(userService.addToFavorites(testUser.getId(), 9999L))
+        StepVerifier.create(userService.addToFavorites(testUser.getId(), 9999L, testUser.getId()))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.NOT_FOUND, ((RequestException) e).code);
@@ -205,7 +205,7 @@ class UserServiceTest {
     @Test
     void addToFavorites_userNotFound() {
         // no user with given id
-        StepVerifier.create(userService.addToFavorites(999999L, 1L))
+        StepVerifier.create(userService.addToFavorites(999999L, 1L, 999999L))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.NOT_FOUND, ((RequestException) e).code);

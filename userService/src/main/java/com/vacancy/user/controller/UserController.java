@@ -5,7 +5,7 @@ import java.util.List;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,6 +36,11 @@ public class UserController {
     private final UserService userService;
     private final ModelMapper modelMapper = new ModelMapper();
 
+    private Mono<Long> getCurrentUserId() {
+        return ReactiveSecurityContextHolder.getContext()
+                .map(ctx -> Long.valueOf((String) ctx.getAuthentication().getPrincipal()));
+    }
+
     @Operation(summary = "Получить список всех пользователей")
     @GetMapping
     public Flux<UserResponseDto> getAllUsers(
@@ -55,7 +60,6 @@ public class UserController {
 
     @Operation(summary = "Создать пользователя")
     @PostMapping
-    @PreAuthorize("hasRole(ROLE_SUPERVISOR)")
     public Mono<ResponseEntity<UserResponseDto>> createUser(@Valid @RequestBody UserRequestCreateDto user) {
         return userService.createUser(modelMapper.map(user, User.class))
                 .map(usr -> modelMapper.map(usr, UserResponseDto.class))
@@ -64,24 +68,28 @@ public class UserController {
 
     @Operation(summary = "Обновить пользователя по id")
     @PutMapping("/{userId}")
-    public Mono<ResponseEntity<UserResponseDto>> updateUser(@PathVariable Long userId, @Valid @RequestBody UserRequestUpdateDto user) {
-        return userService.updateUser(userId, modelMapper.map(user, User.class))
-                .map(usr -> modelMapper.map(usr, UserResponseDto.class))
-                .map(ResponseEntity::ok);
+    public Mono<ResponseEntity<UserResponseDto>> updateUser(@PathVariable Long userId,
+            @Valid @RequestBody UserRequestUpdateDto user) {
+        return getCurrentUserId()
+                .flatMap(curr -> userService.updateUser(userId, modelMapper.map(user, User.class), curr)
+                        .map(usr -> modelMapper.map(usr, UserResponseDto.class))
+                        .map(ResponseEntity::ok));
     }
 
     @Operation(summary = "Удалить пользователя по id")
     @DeleteMapping("/{userId}")
     public Mono<ResponseEntity<Void>> deleteUser(@PathVariable Long userId) {
-        return userService.deleteUser(userId)
-                .thenReturn(ResponseEntity.noContent().build());
+        return getCurrentUserId()
+                .flatMap(curr -> userService.deleteUser(userId, curr)
+                        .thenReturn(ResponseEntity.noContent().build()));
     }
 
     @Operation(summary = "Получить избранные вакансии пользователя")
     @GetMapping("/{userId}/favorite")
     public Mono<ResponseEntity<List<Long>>> getUserFavorites(@PathVariable Long userId) {
-        return userService.getUserFavoriteVacancyIds(userId)
-                .map(ResponseEntity::ok);
+        return getCurrentUserId()
+                .flatMap(curr -> userService.getUserFavoriteVacancyIds(userId, curr)
+                        .map(ResponseEntity::ok));
     }
 
     @Operation(summary = "Добавить вакансию в избранное")
@@ -89,14 +97,16 @@ public class UserController {
     public Mono<ResponseEntity<Void>> addToFavorites(
             @PathVariable Long userId,
             @PathVariable Long vacancyId) {
-        return userService.addToFavorites(userId, vacancyId)
-                .thenReturn(ResponseEntity.noContent().build());
+        return getCurrentUserId()
+                .flatMap(curr -> userService.addToFavorites(userId, vacancyId, curr)
+                        .thenReturn(ResponseEntity.noContent().build()));
     }
 
     @Operation(summary = "Убрать вакансию из избранного")
     @DeleteMapping("/{userId}/favorite/{vacancyId}")
     public Mono<ResponseEntity<Void>> removeFromFavorites(@PathVariable Long userId, @PathVariable Long vacancyId) {
-        return userService.removeFromFavorites(userId, vacancyId)
-                .thenReturn(ResponseEntity.noContent().build());
+        return getCurrentUserId()
+                .flatMap(curr -> userService.removeFromFavorites(userId, vacancyId, curr)
+                        .thenReturn(ResponseEntity.noContent().build()));
     }
 }

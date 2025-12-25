@@ -2,6 +2,7 @@ package com.vacancy.user.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
@@ -32,8 +33,25 @@ public class SecurityConfig {
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
+
+                .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+                .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
+
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((exchange, exAuth) -> {
+                            // avoid adding WWW-Authenticate
+                            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                            return exchange.getResponse().setComplete();
+                        })
+                        .accessDeniedHandler((exchange, denied) -> {
+                            // avoid adding WWW-Authenticate
+                            exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+                            return exchange.getResponse().setComplete();
+                        }))
+
                 .authorizeExchange(ex -> ex
                         .pathMatchers(
                                 "/auth/**",
@@ -41,9 +59,9 @@ public class SecurityConfig {
                                 "/user/swagger-ui/**")
                         .permitAll()
                         .anyExchange().authenticated())
+
                 .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
-                .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
-                .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
+
                 .build();
     }
 }

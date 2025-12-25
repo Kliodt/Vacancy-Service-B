@@ -7,7 +7,6 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -17,8 +16,10 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Slf4j
 public class JwtUtils {
 
     private final Key key;
@@ -46,23 +47,22 @@ public class JwtUtils {
                 .compact();
     }
 
-    /**
-     * Validate token. Return new Authentication if valid, null otherwise
-     * 
-     * @return Authentication(principal: String (userId), authorities:
-     *         List<SimpleGrantedAuthority>)
-     */
-    public Authentication tokenToAuthentication(String token) {
-        try {
-            Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
-            List<String> authorities = claims.get("roles", List.class);
-            return new UsernamePasswordAuthenticationToken(
-                    claims.getSubject(),
-                    null,
-                    authorities.stream().map(SimpleGrantedAuthority::new).toList());
-        } catch (Exception e) {
-            return null;
-        }
+    private Claims getAllClaimsFromToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    @SuppressWarnings("unchecked")
+    public UsernamePasswordAuthenticationToken getAuthenticationFromToken(String token) {
+        Claims claims = getAllClaimsFromToken(token);
+        String subject = claims.getSubject();
+        List<String> roles = claims.get("roles", List.class);
+        List<SimpleGrantedAuthority> authorities = (roles == null) ? List.of()
+                : roles.stream().map(SimpleGrantedAuthority::new).toList();
+        return new UsernamePasswordAuthenticationToken(subject, null, authorities);
     }
 
 }

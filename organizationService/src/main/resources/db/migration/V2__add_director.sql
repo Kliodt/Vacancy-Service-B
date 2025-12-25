@@ -1,0 +1,3 @@
+
+ALTER TABLE organization
+ADD COLUMN director BIGINT NOT NULL;

@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class OrganizationDtoIn {
+public class OrganizationRequestUpdateDto {
 
     @NotBlank(message = "Nickname не может быть пустым")
     @Size(max = 50, message = "Nickname не может превышать 50 символов")

@@ -5,6 +5,7 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -26,9 +27,13 @@ public class Organization {
     @Size(max = 100, message = "Email не может превышать 100 символов")
     private String email;
 
+    @NotNull(message = "Director не может быть пустым")
+    private Long director;
+
     public void updateWithOther(Organization other) {
         this.setNickname(other.getNickname());
         this.setEmail(other.getEmail());
+        this.setDirector(other.getDirector());
     }
 
 }

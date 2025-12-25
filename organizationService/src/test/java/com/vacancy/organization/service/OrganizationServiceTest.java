@@ -38,6 +38,7 @@ class OrganizationServiceTest {
     OrganizationService organizationService;
 
     private Organization testOrganization;
+    private Long testOrganizationDirector = 10L;
 
     @BeforeAll
     static void beforeAll() {
@@ -73,6 +74,7 @@ class OrganizationServiceTest {
         Organization org = new Organization();
         org.setEmail("example@gmail.com");
         org.setNickname("TestOrg");
+        org.setDirector(testOrganizationDirector);
         // Save a test organization for use in tests
         testOrganization = organizationRepository.save(org).block();
         assertNotNull(testOrganization);
@@ -101,7 +103,7 @@ class OrganizationServiceTest {
         toCreate.setEmail("new@example.com");
         toCreate.setNickname("NewOrg");
 
-        StepVerifier.create(organizationService.createOrganization(toCreate))
+        StepVerifier.create(organizationService.createOrganization(toCreate, 1L))
                 .expectNextMatches(o -> o.getId() != null && o.getEmail().equals("new@example.com"))
                 .verifyComplete();
     }
@@ -112,7 +114,7 @@ class OrganizationServiceTest {
         toCreate.setEmail(testOrganization.getEmail());
         toCreate.setNickname("NewOrg");
 
-        StepVerifier.create(organizationService.createOrganization(toCreate))
+        StepVerifier.create(organizationService.createOrganization(toCreate, 1L))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.CONFLICT, ((RequestException) e).code);
@@ -126,7 +128,7 @@ class OrganizationServiceTest {
         upd.setEmail("x@example.com");
         upd.setNickname("X");
 
-        StepVerifier.create(organizationService.updateOrganization(999999L, upd))
+        StepVerifier.create(organizationService.updateOrganization(999999L, upd, 1L))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.NOT_FOUND, ((RequestException) e).code);
@@ -147,7 +149,7 @@ class OrganizationServiceTest {
         upd.setEmail(testOrganization.getEmail());
         upd.setNickname("Updated");
 
-        StepVerifier.create(organizationService.updateOrganization(newOrg.getId(), upd))
+        StepVerifier.create(organizationService.updateOrganization(newOrg.getId(), upd, 1L))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.CONFLICT, ((RequestException) e).code);
@@ -166,7 +168,7 @@ class OrganizationServiceTest {
         saved.setEmail(upd.getEmail());
         saved.setNickname(upd.getNickname());
 
-        StepVerifier.create(organizationService.updateOrganization(testOrganization.getId(), upd))
+        StepVerifier.create(organizationService.updateOrganization(testOrganization.getId(), upd, testOrganizationDirector))
                 .expectNextMatches(o -> o.getEmail().equals("updated@example.com") && o.getNickname().equals("Updated"))
                 .verifyComplete();
     }
@@ -177,14 +179,14 @@ class OrganizationServiceTest {
         upd.setEmail(testOrganization.getEmail());
         upd.setNickname("Updated");
 
-        StepVerifier.create(organizationService.updateOrganization(testOrganization.getId(), upd))
+        StepVerifier.create(organizationService.updateOrganization(testOrganization.getId(), upd, testOrganizationDirector))
                 .expectNextMatches(o -> o.getEmail().equals(testOrganization.getEmail()) && o.getNickname().equals("Updated"))
                 .verifyComplete();
     }
 
     @Test
     void deleteOrganization_completes() {
-        StepVerifier.create(organizationService.deleteOrganization(testOrganization.getId())).verifyComplete();
+        StepVerifier.create(organizationService.deleteOrganization(testOrganization.getId(), testOrganizationDirector)).verifyComplete();
     }
 
     @Test

@@ -76,7 +76,7 @@ class UserServiceTest {
         userRepository.deleteAll();
 
         // Create test vacancy
-        User user = new User("TestUser", "example@gmail.com");
+        User user = new User("TestUser", "example@gmail.com", "pass");
         user.setCvLink("http://dirve/mycv.txt");
         // Save a test user for use in tests
         testUser = userRepository.save(user);
@@ -87,7 +87,7 @@ class UserServiceTest {
     void getAllUsers_simple_and_paged() {
         // create additional users
         for (int i = 0; i < 60; i++) {
-            User u = new User("User" + i, "u" + i + "@example.com");
+            User u = new User("User" + i, "u" + i + "@example.com", "pass");
             userRepository.save(u);
         }
 
@@ -118,12 +118,12 @@ class UserServiceTest {
 
     @Test
     void createUser_success_and_conflict() {
-        User toCreate = new User("NewUser", "newuser@example.com");
+        User toCreate = new User("NewUser", "newuser@example.com", "pass");
         StepVerifier.create(userService.createUser(toCreate))
                 .expectNextMatches(u -> u.getId() > 0 && u.getEmail().equals("newuser@example.com"))
                 .verifyComplete();
 
-        User dup = new User("Dup", testUser.getEmail());
+        User dup = new User("Dup", testUser.getEmail(), "pass");
         StepVerifier.create(userService.createUser(dup))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
@@ -135,7 +135,7 @@ class UserServiceTest {
     @Test
     void updateUser_notFound_conflict_success() {
         // not found
-        User upd = new User("X", "x@example.com");
+        User upd = new User("X", "x@example.com", "pass");
         StepVerifier.create(userService.updateUser(999999L, upd))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
@@ -144,9 +144,9 @@ class UserServiceTest {
                 .verify();
 
         // conflict: create another user and try to update it to have testUser's email
-        User another = new User("Another", "another@example.com");
+        User another = new User("Another", "another@example.com", "pass");
         another = userRepository.save(another);
-        User conflictUpdate = new User("AnotherUpdated", testUser.getEmail());
+        User conflictUpdate = new User("AnotherUpdated", testUser.getEmail(), "pass");
         StepVerifier.create(userService.updateUser(another.getId(), conflictUpdate))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
@@ -155,7 +155,7 @@ class UserServiceTest {
                 .verify();
 
         // success
-        User successUpdate = new User("Updated", "updated@example.com");
+        User successUpdate = new User("Updated", "updated@example.com", "pass");
         StepVerifier.create(userService.updateUser(testUser.getId(), successUpdate))
                 .expectNextMatches(u -> u.getEmail().equals("updated@example.com") && u.getNickname().equals("Updated"))
                 .verifyComplete();

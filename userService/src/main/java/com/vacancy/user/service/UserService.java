@@ -2,12 +2,14 @@ package com.vacancy.user.service;
 
 import java.util.List;
 
+import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
+
 import com.vacancy.user.model.User;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public interface UserService {
+public interface UserService extends ReactiveUserDetailsService {
     Flux<User> getAllUsers(int page, int size);
     Mono<User> getUserById(long id);
     Mono<User> createUser(User user);

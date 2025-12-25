@@ -3,6 +3,8 @@ package com.vacancy.user.service;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import com.vacancy.user.client.Clients;
@@ -41,6 +43,14 @@ public class UserServiceImpl implements UserService {
     public Mono<User> getUserById(long id) {
         return Mono.fromCallable(() -> userRepository.findById(id)
                 .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND)))
+                .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    @Override
+    public Mono<UserDetails> findByUsername(String username) {
+        return Mono
+                .<UserDetails>fromCallable(() -> userRepository.findUserByEmail(username)
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username)))
                 .subscribeOn(Schedulers.boundedElastic());
     }
 

@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Data
-public class UserDtoOut {
+public class UserResponseDto {
     private Long id;
     private String nickname;
     private String email;

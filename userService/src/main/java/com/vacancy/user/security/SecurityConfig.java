@@ -66,6 +66,7 @@ public class SecurityConfig {
                 .build();
     }
 
+    // Handle exceptions during email+password auth
     @Bean
     public AuthenticationWebFilter authenticationWebFilter(ReactiveAuthenticationManager authManager) {
         AuthenticationWebFilter filter = new AuthenticationWebFilter(authManager);

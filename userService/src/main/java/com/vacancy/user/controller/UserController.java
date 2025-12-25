@@ -58,7 +58,7 @@ public class UserController {
                 .map(ResponseEntity::ok);
     }
 
-    @Operation(summary = "Создать пользователя")
+    @Operation(summary = "Создать пользователя (только supervisor)")
     @PostMapping
     public Mono<ResponseEntity<UserResponseDto>> createUser(@Valid @RequestBody UserRequestCreateDto user) {
         return userService.createUser(modelMapper.map(user, User.class))

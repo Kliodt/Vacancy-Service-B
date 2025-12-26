@@ -1,5 +1,6 @@
 package com.vacancy.vacancy.client;
 
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -14,11 +15,13 @@ public class Clients {
 
     @CircuitBreaker(name = "organization-service")
     public Object getOrganizationById(long orgId) {
-        return organizationClient.getOrganizationById(orgId);
+        String token = (String) SecurityContextHolder.getContext().getAuthentication().getCredentials();
+        return organizationClient.getOrganizationById(orgId, "Bearer " + token);
     }
 
     @CircuitBreaker(name = "user-service")
     public Object getUserById(long userId) {
-        return userClient.getUserById(userId);
+        String token = (String) SecurityContextHolder.getContext().getAuthentication().getCredentials();
+        return userClient.getUserById(userId, "Bearer " + token);
     }
 }

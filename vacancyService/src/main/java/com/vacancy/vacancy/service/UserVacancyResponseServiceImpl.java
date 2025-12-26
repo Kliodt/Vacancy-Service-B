@@ -1,8 +1,10 @@
 package com.vacancy.vacancy.service;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ROLE_USER')")
 public class UserVacancyResponseServiceImpl implements UserVacancyResponseService {
 
     private final UserVacancyResponseRepository responseRepository;
@@ -23,7 +26,9 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
     private final Clients clients;
 
     @Transactional(readOnly = true)
-    public List<UserVacancyResponse> getUserResponses(long userId) {
+    public List<UserVacancyResponse> getUserResponses(long userId, Long currUserId) {
+        if (!Objects.equals(userId, currUserId))
+            throw new RequestException(HttpStatus.FORBIDDEN, "Можно получать только свои отклики");
         return responseRepository.findByUserId(userId);
     }
 
@@ -32,17 +37,17 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
         return responseRepository.findByVacancyId(vacancyId);
     }
 
-    @Transactional(readOnly = true)
-    public List<UserVacancyResponse> getVacancyResponsesForUser(long userId, long vacancyId) {
-        return responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
-    }
-
     @Transactional
-    public void removeResponseFromVacancy(long vacancyId, long userId) {
+    public void removeResponseFromVacancy(long vacancyId, long userId, Long currUserId) {
+        if (!Objects.equals(userId, currUserId))
+            throw new RequestException(HttpStatus.FORBIDDEN, "Можно удалять только свои отклики");
         responseRepository.deleteByUserIdAndVacancyId(userId, vacancyId);
     }
 
-    public void respondToVacancy(long vacancyId, long userId) {
+    public void respondToVacancy(long vacancyId, long userId, Long currUserId) {
+        if (!Objects.equals(userId, currUserId))
+            throw new RequestException(HttpStatus.FORBIDDEN, "Нельзя оставлять отклики за других");
+        
         try {
             clients.getUserById(userId);
         } catch (Exception e) {

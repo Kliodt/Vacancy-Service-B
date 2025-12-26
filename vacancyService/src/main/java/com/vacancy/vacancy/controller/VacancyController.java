@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import com.vacancy.vacancy.model.Vacancy;
@@ -25,6 +26,10 @@ public class VacancyController {
 
     private final VacancyService vacancyService;
     private final ModelMapper modelMapper;
+
+    private Long getCurrentUserId() {
+        return Long.valueOf((String) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
+    }
 
     @Operation(summary = "Получить все вакансии")
     @GetMapping
@@ -56,7 +61,7 @@ public class VacancyController {
     @PostMapping
     public ResponseEntity<Vacancy> createVacancy(@Valid @RequestBody VacancyDtoIn vacancy) {
         Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
-        return ResponseEntity.status(HttpStatus.CREATED).body(vacancyService.createVacancy(vac));
+        return ResponseEntity.status(HttpStatus.CREATED).body(vacancyService.createVacancy(vac, getCurrentUserId()));
     }
 
     @Operation(summary = "Обновить вакансию")
@@ -65,13 +70,13 @@ public class VacancyController {
             @PathVariable Long vacancyId,
             @Valid @RequestBody VacancyDtoIn vacancy) {
         Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
-        return ResponseEntity.ok(vacancyService.updateVacancy(vacancyId, vac));
+        return ResponseEntity.ok(vacancyService.updateVacancy(vacancyId, vac, getCurrentUserId()));
     }
 
     @Operation(summary = "Удалить вакансию")
     @DeleteMapping("/{vacancyId}")
     public ResponseEntity<Void> deleteVacancy(@PathVariable Long vacancyId) {
-        vacancyService.deleteVacancy(vacancyId);
+        vacancyService.deleteVacancy(vacancyId, getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 

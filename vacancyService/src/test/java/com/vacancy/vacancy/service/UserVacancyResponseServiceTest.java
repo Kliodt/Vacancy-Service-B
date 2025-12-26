@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
@@ -14,14 +15,18 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import com.vacancy.vacancy.client.UserClient;
@@ -39,6 +44,9 @@ import feign.Request.HttpMethod;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.cloud.config.enabled=false", "eureka.client.enabled=false" })
 @ActiveProfiles("test")
+@ExtendWith(SpringExtension.class) 
+@ContextConfiguration 
+@WithMockUser(roles = "USER")
 class UserVacancyResponseServiceTest {
 
     @LocalServerPort
@@ -75,6 +83,7 @@ class UserVacancyResponseServiceTest {
         registry.add("spring.flyway.url", postgres::getJdbcUrl);
         registry.add("spring.flyway.user", postgres::getUsername);
         registry.add("spring.flyway.password", postgres::getPassword);
+        registry.add("jwt.secret", () -> "fjqewh3oi4jgfng3u498gvn289rnv934h8fncv3p4fjn32vj3n8492");
     }
 
     @BeforeEach
@@ -92,7 +101,7 @@ class UserVacancyResponseServiceTest {
         assertNotNull(testVacancy);
 
         // Mock beans
-        when(userClient.getUserById(anyLong()))
+        when(userClient.getUserById(anyLong(), any()))
                 .thenAnswer(invocation -> {
                     Long id = invocation.getArgument(0);
                     if (id < 100L)
@@ -107,7 +116,7 @@ class UserVacancyResponseServiceTest {
     void testRespondToVacancy_Success() {
         long userId = 5L;
         // ensure there is a vacancy (testVacancy created in setUp)
-        responseService.respondToVacancy(testVacancy.getId(), userId);
+        responseService.respondToVacancy(testVacancy.getId(), userId, userId);
 
         var list = responseRepository.findByUserIdAndVacancyId(userId, testVacancy.getId());
         assertNotNull(list);
@@ -122,7 +131,7 @@ class UserVacancyResponseServiceTest {
         long missingVacancyId = 99999L;
         // userClient mocked to return object in setUp, but vacancy id doesn't exist
         assertThrows(RequestException.class, () -> {
-            responseService.respondToVacancy(missingVacancyId, userId);
+            responseService.respondToVacancy(missingVacancyId, userId, userId);
         });
     }
 
@@ -131,7 +140,7 @@ class UserVacancyResponseServiceTest {
         long missingUserId = 200L;
         long vacancyId = testVacancy.getId();
         RequestException ex = assertThrows(RequestException.class,
-                () -> responseService.respondToVacancy(vacancyId, missingUserId));
+            () -> responseService.respondToVacancy(vacancyId, missingUserId, missingUserId));
         assertEquals(HttpStatus.NOT_FOUND, ex.code);
     }
 
@@ -140,9 +149,9 @@ class UserVacancyResponseServiceTest {
         long userId = 5L;
         long vacancyId = testVacancy.getId();
         assertEquals(0, responseRepository.count());
-        responseService.respondToVacancy(vacancyId, userId);
-        responseService.respondToVacancy(vacancyId, userId);
-        responseService.respondToVacancy(vacancyId, userId);
+        responseService.respondToVacancy(vacancyId, userId, userId);
+        responseService.respondToVacancy(vacancyId, userId, userId);
+        responseService.respondToVacancy(vacancyId, userId, userId);
         assertEquals(1, responseRepository.count());
     }
 
@@ -156,7 +165,7 @@ class UserVacancyResponseServiceTest {
         var before = responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
         assertEquals(1, before.size());
 
-        responseService.removeResponseFromVacancy(vacancyId, userId);
+        responseService.removeResponseFromVacancy(vacancyId, userId, userId);
 
         var after = responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
         assertTrue(after == null || after.isEmpty());
@@ -178,7 +187,7 @@ class UserVacancyResponseServiceTest {
         responseRepository.save(new UserVacancyResponse(userA, savedVac2.getId()));
         responseRepository.save(new UserVacancyResponse(userB, vacancyA));
 
-        var userResponses = responseService.getUserResponses(userA);
+        var userResponses = responseService.getUserResponses(userA, userA);
         assertNotNull(userResponses);
         assertEquals(2, userResponses.size());
 
@@ -186,9 +195,6 @@ class UserVacancyResponseServiceTest {
         assertNotNull(vacancyResponses);
         assertEquals(2, vacancyResponses.size());
 
-        var specific = responseService.getVacancyResponsesForUser(userA, vacancyA);
-        assertNotNull(specific);
-        assertEquals(1, specific.size());
     }
 
 }

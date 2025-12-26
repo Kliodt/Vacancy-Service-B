@@ -1,20 +1,20 @@
 server:
-  port: 8081
+  port: 0
 
 spring:
-  r2dbc:
-    # url: r2dbc:postgresql://localhost:5432/organization_db
-    url: ${DB_URL}
-    username: ${DB_USER}
-    password: ${DB_PASS}
+  # r2dbc:
+  #   # url: r2dbc:postgresql://localhost:5432/organization_db
+  #   url: ${DB_URL}
+  #   username: ${DB_USER}
+  #   password: ${DB_PASS}
 
-  flyway:
-    url: ${DB_URL_2}
-    locations: classpath:db/migration
-    baseline-on-migrate: true
+  # flyway:
+  #   url: ${DB_URL_2}
+  #   locations: classpath:db/migration
+  #   baseline-on-migrate: true
 
   output:
     ansi.enabled: ALWAYS
 
-jwt:
-  secret: ${JWT_SECRET}
+# jwt:
+#   secret: ${JWT_SECRET}

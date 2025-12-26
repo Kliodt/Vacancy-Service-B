@@ -1,23 +1,23 @@
 server:
-  port: 8083
+  port: 0
 
 spring:
-  datasource:
-    driver-class-name: org.postgresql.Driver
-    url: ${DB_URL}
-    username: ${DB_USER}
-    password: ${DB_PASS}
+  # datasource:
+  #   driver-class-name: org.postgresql.Driver
+  #   url: ${DB_URL}
+  #   username: ${DB_USER}
+  #   password: ${DB_PASS}
 
-  jpa:
-    show-sql: true
-    hibernate:
-      ddl-auto: validate
+  # jpa:
+  #   show-sql: true
+  #   hibernate:
+  #     ddl-auto: validate
 
-  flyway:
-    enabled: true
-    url: ${DB_URL}
-    user: ${DB_USER}
-    password: ${DB_PASS}
+  # flyway:
+  #   enabled: true
+  #   url: ${DB_URL}
+  #   user: ${DB_USER}
+  #   password: ${DB_PASS}
 
   output:
     ansi.enabled: ALWAYS

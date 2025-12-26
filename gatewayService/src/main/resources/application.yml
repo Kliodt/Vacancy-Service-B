@@ -2,53 +2,53 @@ server:
   port: 8080
 
 spring:
-  application:
-    name: gateway-service
+  # application:
+  #   name: gateway-service
   output:
     ansi:
       enabled: ALWAYS
-  cloud:
-    gateway:
-      routes:
-        - id: organization-service
-          uri: lb://organization-service
-          predicates:
-            - Path=/api/organizations, /api/organizations/**, /organization/**
+  # cloud:
+  #   gateway:
+  #     routes:
+  #       - id: organization-service
+  #         uri: lb://organization-service
+  #         predicates:
+  #           - Path=/api/organizations, /api/organizations/**, /organization/**
 
-        - id: user-service
-          uri: lb://user-service
-          predicates:
-            - Path=/api/users, /api/users/**, /auth/**, /user/**
+  #       - id: user-service
+  #         uri: lb://user-service
+  #         predicates:
+  #           - Path=/api/users, /api/users/**, /auth/**, /user/**
 
-        - id: vacancy-service
-          uri: lb://vacancy-service
-          predicates:
-            - Path=/api/vacancies, /api/vacancies/**, /vacancy/**
+  #       - id: vacancy-service
+  #         uri: lb://vacancy-service
+  #         predicates:
+  #           - Path=/api/vacancies, /api/vacancies/**, /vacancy/**
 
-eureka:
-  client:
-    service-url:
-      # todo: change in docker
-      # defaultZone: http://eureka-server:8761/eureka/
-      defaultZone: http://localhost:8761/eureka/
+# eureka:
+#   client:
+#     service-url:
+#       # todo: change in docker
+#       # defaultZone: http://eureka-server:8761/eureka/
+#       defaultZone: http://localhost:8761/eureka/
 
-springdoc:
-  api-docs:
-    enabled: true
-    path: /v3/api-docs
-  swagger-ui:
-    enabled: true
-    config-url: /v3/api-docs/swagger-config
-    urls:
-      - name: Gateway Service
-        url: /v3/api-docs
+# springdoc:
+#   api-docs:
+#     enabled: true
+#     path: /v3/api-docs
+#   swagger-ui:
+#     enabled: true
+#     config-url: /v3/api-docs/swagger-config
+#     urls:
+#       - name: Gateway Service
+#         url: /v3/api-docs
 
-      - name: Vacancy Service
-        url: /vacancy/v3/api-docs
+#       - name: Vacancy Service
+#         url: /vacancy/v3/api-docs
 
-      - name: User Service
-        url: /user/v3/api-docs
+#       - name: User Service
+#         url: /user/v3/api-docs
 
-      - name: Organization Service
-        url: /organization/v3/api-docs
+#       - name: Organization Service
+#         url: /organization/v3/api-docs
 

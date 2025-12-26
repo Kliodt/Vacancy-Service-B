@@ -7,9 +7,12 @@ spring:
       uri: http://localhost:8888
       fail-fast: true
 
-eureka:
-  client:
-    service-url:
-      # todo: change in docker
-      # defaultZone: http://eureka-server:8761/eureka/
-      defaultZone: http://localhost:8761/eureka/
+  profiles:
+    active: ${PROFILE:dev}
+
+# eureka:
+#   client:
+#     service-url:
+#       # todo: change in docker
+#       # defaultZone: http://eureka-server:8761/eureka/
+#       defaultZone: http://localhost:8761/eureka/

@@ -62,7 +62,7 @@ public class JwtUtils {
         List<String> roles = claims.get("roles", List.class);
         List<SimpleGrantedAuthority> authorities = (roles == null) ? List.of()
                 : roles.stream().map(SimpleGrantedAuthority::new).toList();
-        return new UsernamePasswordAuthenticationToken(subject, null, authorities);
+        return new UsernamePasswordAuthenticationToken(subject, token, authorities);
     }
 
 }

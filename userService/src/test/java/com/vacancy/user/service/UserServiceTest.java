@@ -16,6 +16,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
@@ -174,7 +176,7 @@ class UserServiceTest {
                 .verifyComplete();
 
         // mock vacancy client to return found
-        when(vacancyClient.getVacancyById(anyLong())).thenReturn(Mono.just(new Object()));
+        when(vacancyClient.getVacancyById(anyLong(), any())).thenReturn(Mono.just(new Object()));
 
         // add to favorites
         StepVerifier.create(userService.addToFavorites(testUser.getId(), 42L, testUser.getId())).verifyComplete();
@@ -192,7 +194,7 @@ class UserServiceTest {
     @Test
     void addToFavorites_vacancyNotFound() {
         // mock vacancy client to return an error (vacancy not found)
-        when(vacancyClient.getVacancyById(anyLong())).thenReturn(Mono.error(new RuntimeException("not found")));
+        when(vacancyClient.getVacancyById(anyLong(), any())).thenReturn(Mono.error(new RuntimeException("not found")));
 
         StepVerifier.create(userService.addToFavorites(testUser.getId(), 9999L, testUser.getId()))
                 .expectErrorSatisfies(e -> {

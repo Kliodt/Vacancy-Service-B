@@ -8,13 +8,17 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import com.vacancy.organization.exceptions.RequestException;
@@ -26,6 +30,9 @@ import reactor.test.StepVerifier;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.cloud.config.enabled=false", "eureka.client.enabled=false" })
 @ActiveProfiles("test")
+@ExtendWith(SpringExtension.class) 
+@ContextConfiguration 
+@WithMockUser(roles = "USER")
 class OrganizationServiceTest {
 
     @LocalServerPort
@@ -63,6 +70,7 @@ class OrganizationServiceTest {
                 postgres.getHost(), postgres.getFirstMappedPort(), postgres.getDatabaseName()));
         registry.add("spring.r2dbc.username", postgres::getUsername);
         registry.add("spring.r2dbc.password", postgres::getPassword);
+        registry.add("jwt.secret", () -> "fjqewh3oi4jgfng3u498gvn289rnv934h8fncv3p4fjn32vj3n8492");
     }
 
     @BeforeEach
@@ -141,6 +149,7 @@ class OrganizationServiceTest {
         Organization newOrg = new Organization();
         newOrg.setEmail("new@example.com");
         newOrg.setNickname("NewOrg");
+        newOrg.setDirector(testOrganizationDirector);
         newOrg = organizationRepository.save(newOrg).block();
         assertNotNull(newOrg);
 
@@ -148,8 +157,9 @@ class OrganizationServiceTest {
         Organization upd = new Organization();
         upd.setEmail(testOrganization.getEmail());
         upd.setNickname("Updated");
+        upd.setDirector(testOrganizationDirector);
 
-        StepVerifier.create(organizationService.updateOrganization(newOrg.getId(), upd, 1L))
+        StepVerifier.create(organizationService.updateOrganization(newOrg.getId(), upd, testOrganizationDirector))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.CONFLICT, ((RequestException) e).code);
@@ -162,6 +172,7 @@ class OrganizationServiceTest {
         Organization upd = new Organization();
         upd.setEmail("updated@example.com");
         upd.setNickname("Updated");
+        upd.setDirector(testOrganizationDirector);
 
         Organization saved = new Organization();
         saved.setId(testOrganization.getId());
@@ -178,6 +189,7 @@ class OrganizationServiceTest {
         Organization upd = new Organization();
         upd.setEmail(testOrganization.getEmail());
         upd.setNickname("Updated");
+        upd.setDirector(testOrganizationDirector);
 
         StepVerifier.create(organizationService.updateOrganization(testOrganization.getId(), upd, testOrganizationDirector))
                 .expectNextMatches(o -> o.getEmail().equals(testOrganization.getEmail()) && o.getNickname().equals("Updated"))
@@ -195,6 +207,7 @@ class OrganizationServiceTest {
             Organization o = new Organization();
             o.setEmail("org" + i + "@example.com");
             o.setNickname("Org" + i);
+            o.setDirector(testOrganizationDirector);
             organizationRepository.save(o).block();
         }
         Long count = organizationRepository.count().block();
@@ -210,6 +223,7 @@ class OrganizationServiceTest {
             Organization o = new Organization();
             o.setEmail("org" + i + "@example.com");
             o.setNickname("Org" + i);
+            o.setDirector(testOrganizationDirector);
             organizationRepository.save(o).block();
         }
         Long count = organizationRepository.count().block();

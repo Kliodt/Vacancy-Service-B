@@ -8,14 +8,18 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -36,6 +40,9 @@ import reactor.core.publisher.Mono;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.cloud.config.enabled=false", "eureka.client.enabled=false" })
 @ActiveProfiles("test")
+@ExtendWith(SpringExtension.class) 
+@ContextConfiguration 
+@WithMockUser(roles = "USER")
 class UserServiceTest {
 
     @LocalServerPort
@@ -70,6 +77,9 @@ class UserServiceTest {
         registry.add("spring.flyway.url", postgres::getJdbcUrl);
         registry.add("spring.flyway.user", postgres::getUsername);
         registry.add("spring.flyway.password", postgres::getPassword);
+        registry.add("jwt.secret", () -> "fjqewh3oi4jgfng3u498gvn289rnv934h8fncv3p4fjn32vj3n8492");
+        registry.add("supervisor.email", () -> "su@su.su");
+        registry.add("supervisor.pass", () -> "su");
     }
 
     @BeforeEach
@@ -119,6 +129,7 @@ class UserServiceTest {
     }
 
     @Test
+    @WithMockUser(roles = "SUPERVISOR")
     void createUser_success_and_conflict() {
         User toCreate = new User("NewUser", "newuser@example.com", "pass");
         StepVerifier.create(userService.createUser(toCreate))

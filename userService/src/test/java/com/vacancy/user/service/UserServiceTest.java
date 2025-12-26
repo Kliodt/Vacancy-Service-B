@@ -8,6 +8,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -78,6 +80,7 @@ class UserServiceTest {
         registry.add("spring.flyway.user", postgres::getUsername);
         registry.add("spring.flyway.password", postgres::getPassword);
         registry.add("jwt.secret", () -> "fjqewh3oi4jgfng3u498gvn289rnv934h8fncv3p4fjn32vj3n8492");
+        registry.add("jwt.expiration-ms", () -> 3600000);
         registry.add("supervisor.email", () -> "su@su.su");
         registry.add("supervisor.pass", () -> "su");
     }
@@ -224,6 +227,38 @@ class UserServiceTest {
                     assertEquals(HttpStatus.NOT_FOUND, ((RequestException) e).code);
                 })
                 .verify();
+    }
+
+    @Test
+    void forbiddenWhenCurrentUserIdIsIncorrect() {
+        Long wrongId = 99999L;
+        assertAll("operations forbidden for wrong currentUserId",
+                () -> {
+                    RequestException ex = assertThrows(RequestException.class,
+                            () -> userService.updateUser(testUser.getId(), new User("X", "x@example.com", "pass"), wrongId).block());
+                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
+                },
+                () -> {
+                    RequestException ex = assertThrows(RequestException.class,
+                            () -> userService.deleteUser(testUser.getId(), wrongId).block());
+                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
+                },
+                () -> {
+                    RequestException ex = assertThrows(RequestException.class,
+                            () -> userService.getUserFavoriteVacancyIds(testUser.getId(), wrongId).block());
+                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
+                },
+                () -> {
+                    RequestException ex = assertThrows(RequestException.class,
+                            () -> userService.addToFavorites(testUser.getId(), 1L, wrongId).block());
+                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
+                },
+                () -> {
+                    RequestException ex = assertThrows(RequestException.class,
+                            () -> userService.removeFromFavorites(testUser.getId(), 1L, wrongId).block());
+                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
+                }
+        );
     }
 
 }

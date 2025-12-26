@@ -8,6 +8,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -199,6 +201,23 @@ class OrganizationServiceTest {
     @Test
     void deleteOrganization_completes() {
         StepVerifier.create(organizationService.deleteOrganization(testOrganization.getId(), testOrganizationDirector)).verifyComplete();
+    }
+
+    @Test
+    void forbiddenWhenCurrentUserIdIsIncorrect() {
+        Long wrongId = 99999L;
+        assertAll("operations forbidden for wrong currentUserId",
+                () -> {
+                    RequestException ex = assertThrows(RequestException.class,
+                            () -> organizationService.updateOrganization(testOrganization.getId(), new Organization(), wrongId).block());
+                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
+                },
+                () -> {
+                    RequestException ex = assertThrows(RequestException.class,
+                            () -> organizationService.deleteOrganization(testOrganization.getId(), wrongId).block());
+                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
+                }
+        );
     }
 
     @Test

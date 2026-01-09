@@ -4,15 +4,10 @@ spring:
 
   cloud:
     config:
+      # todo: change in docker
       uri: http://localhost:8888
+      # uri: http://config-server:8888
       fail-fast: true
 
   profiles:
     active: ${PROFILE:dev}
-
-# eureka:
-#   client:
-#     service-url:
-#       # todo: change in docker
-#       # defaultZone: http://eureka-server:8761/eureka/
-#       defaultZone: http://localhost:8761/eureka/

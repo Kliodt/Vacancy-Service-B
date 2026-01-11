@@ -1,4 +1,4 @@
-package com.vacancy.files;
+package com.vacancy.files.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

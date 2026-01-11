@@ -1,4 +1,4 @@
-package com.vacancy.files;
+package com.vacancy.files.service;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -9,11 +9,16 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.vacancy.files.exceptions.RequestException;
+import com.vacancy.files.model.FileData;
+import com.vacancy.files.repository.FileDataRepository;
+
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 
 @Service
 @RequiredArgsConstructor
-public class FileStorageService {
+public class FileServiceImpl implements FileService {
 
     private final FileDataRepository fileRepository;
 
@@ -26,6 +31,7 @@ public class FileStorageService {
         return Path.of(storagePath + Long.toString(id));
     }
 
+    @Override
     public FileData saveToFileSystem(MultipartFile file) {
         String origName = file.getOriginalFilename();
         if (origName == null || origName.isEmpty()) {
@@ -39,26 +45,36 @@ public class FileStorageService {
             file.transferTo(pathByFileId(fileData.getId()));
         } catch (IOException e) {
             fileRepository.delete(fileData);
-            return null;
+            throw new RequestException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store file");
         }
         return fileData;
     }
 
-    public FileData loadFromFileSystem(long id) throws IOException {
+    @Override
+    public FileData loadFromFileSystem(long id) {
         FileData fileData = fileRepository.findById(id).orElse(null);
         if (fileData == null) {
-            throw new IOException("File data wasn't found in database");
+            throw new RequestException(HttpStatus.NOT_FOUND, "File data wasn't found in database");
         }
-        byte[] data = Files.readAllBytes(pathByFileId(fileData.getId()));
-        fileData.setData(data);
-        return fileData;
+        try {
+            byte[] data = Files.readAllBytes(pathByFileId(fileData.getId()));
+            fileData.setData(data);
+            return fileData;
+        } catch (IOException e) {
+            throw new RequestException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to read file from storage");
+        }
     }
 
-    public void deleteFile(long id) throws IOException {
+    @Override
+    public void deleteFile(long id) {
         FileData fileData = fileRepository.findById(id).orElse(null);
         if (fileData == null) return;
 
-        Files.deleteIfExists(pathByFileId(fileData.getId()));
-        fileRepository.delete(fileData);
+        try {
+            Files.deleteIfExists(pathByFileId(fileData.getId()));
+            fileRepository.delete(fileData);
+        } catch (IOException e) {
+            throw new RequestException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete file");
+        }
     }
 }

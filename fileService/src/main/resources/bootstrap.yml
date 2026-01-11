@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: file-service
+
+  cloud:
+    config:
+      # todo: change in docker
+      uri: http://localhost:8888
+      # uri: http://config-server:8888
+      fail-fast: true
+
+  profiles:
+    active: ${PROFILE:dev}

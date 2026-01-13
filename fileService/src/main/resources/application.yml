@@ -2,27 +2,52 @@ server:
   # todo: change to 0
   port: 8087
 
-  
 spring:
   output:
     ansi.enabled: ALWAYS
 
-  servlet:
-    multipart:
-      max-file-size: 50MB
+  # servlet:
+  #   multipart:
+  #     max-file-size: 5MB
 
-  kafka:
-    bootstrap-servers: localhost:29092,localhost:39092,localhost:49092
+  # kafka:
+  #   bootstrap-servers: localhost:29092,localhost:39092,localhost:49092
 
-    # todo: do I need all this
-    consumer:
-      group-id: demo-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  #   # todo: do I need all this
+  #   consumer:
+  #     group-id: demo-group
+  #     auto-offset-reset: earliest
+  #     key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  #     value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  #   producer:
+  #     key-serializer: org.apache.kafka.common.serialization.StringSerializer
+  #     value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
-filestorage:
-  path: C:\Users\79215\Desktop\ITMO\Visokoproizvod_systems\Lab_1\demo\fileService\temp_storage
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+
+  jpa:
+    show-sql: true
+    hibernate:
+      # ddl-auto: validate # todo
+      ddl-auto: update
+
+  flyway:
+    enabled: false
+    # enabled: true # todo
+    url: ${DB_URL}
+    user: ${DB_USER}
+    password: ${DB_PASS}
+
+
+minio:
+  # todo: change in docker
+  # endpoint: http://minio:9000
+  endpoint: http://localhost:9000 
+  access-key: ${MINIO_ROOT_USER}
+  secret-key: ${MINIO_ROOT_PASSWORD}
+  bucket-name: files
+  presign-expiry-seconds: 90000

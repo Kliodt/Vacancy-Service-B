@@ -1,4 +1,3 @@
-version: '3.8'
 
 networks:
   backend-net:
@@ -6,142 +5,311 @@ networks:
   public-net:
     driver: bridge
 
-services:
-
-  config-server:
-    image: config-server:latest
-    container_name: config_server_container
-    restart: no
-    networks:
-      - backend-net
-      - public-net
-    expose:
-      - "8888"
-
-  eureka-server:
-    image: eureka-server:latest
-    container_name: eureka_server_container
-    restart: no
-    networks:
-      - backend-net
-    expose:
-      - "8761"
-
-  gateway-service:
-    image: gateway-service:latest
-    container_name: gateway_service_container
-    restart: no
-    depends_on:
-      - eureka-server
-    networks:
-      - backend-net
-      - public-net
-    ports:
-      - "8080:8080"   # внешний порт
-
-  organization-service:
-    image: organization-service:latest
-    container_name: organization_service_container
-    restart: no
-    depends_on:
-      - eureka-server
-      - config-server
-      - organization-db
-    networks:
-      - backend-net
-    expose:
-      - "8081"
-    environment:
-      DB_URL: r2dbc:postgresql://organization-db:5432/${DB_ORG_NAME}
-      DB_URL_2: jdbc:postgresql://organization-db:5432/${DB_ORG_NAME}
-      DB_USER: ${DB_ORG_USER}
-      DB_PASS: ${DB_ORG_PASS}
-      JWT_SECRET: ${JWT_SECRET}
-
-  organization-db:
-    image: postgres:17
-    container_name: organization_db_container
-    restart: no
-    networks:
-      - backend-net
-    expose:
-      - "5432"
-    environment:
-      POSTGRES_USER: ${DB_ORG_USER}
-      POSTGRES_PASSWORD: ${DB_ORG_PASS}
-      POSTGRES_DB: ${DB_ORG_NAME}
-    volumes:
-      - organization_db_data:/var/lib/postgresql/data
-
-  user-service:
-    image: user-service:latest
-    container_name: user_service_container
-    restart: no
-    depends_on:
-      - eureka-server
-      - config-server
-      - user-db
-    networks:
-      - backend-net
-    expose:
-      - "8082"
-    environment:
-      DB_URL: jdbc:postgresql://user-db:5432/${DB_USER_NAME}
-      DB_USER: ${DB_USER_USER}
-      DB_PASS: ${DB_USER_PASS}
-      JWT_SECRET: ${JWT_SECRET}
-      SUPERVISOR_EMAIL: ${SUPERVISOR_EMAIL}
-      SUPERVISOR_PASS: ${SUPERVISOR_PASS}
-
-  user-db:
-    image: postgres:17
-    container_name: user_db_container
-    restart: no
-    networks:
-      - backend-net
-    expose:
-      - "5432"
-    environment:
-      POSTGRES_USER: ${DB_USER_USER}
-      POSTGRES_PASSWORD: ${DB_USER_PASS}
-      POSTGRES_DB: ${DB_USER_NAME}
-    volumes:
-      - user_db_data:/var/lib/postgresql/data
-
-  vacancy-service:
-    image: vacancy-service:latest
-    container_name: vacancy_service_container
-    restart: no
-    depends_on:
-      - eureka-server
-      - config-server
-      - vacancy-db
-    networks:
-      - backend-net
-    expose:
-      - "8083"
-    environment:
-      DB_URL: jdbc:postgresql://vacancy-db:5432/${DB_VACANCY_NAME}
-      DB_USER: ${DB_VACANCY_USER}
-      DB_PASS: ${DB_VACANCY_PASS}
-      JWT_SECRET: ${JWT_SECRET}
-
-  vacancy-db:
-    image: postgres:17
-    container_name: vacancy_db_container
-    restart: no
-    networks:
-      - backend-net
-    expose:
-      - "5432"
-    environment:
-      POSTGRES_USER: ${DB_VACANCY_USER}
-      POSTGRES_PASSWORD: ${DB_VACANCY_PASS}
-      POSTGRES_DB: ${DB_VACANCY_NAME}
-    volumes:
-      - vacancy_db_data:/var/lib/postgresql/data
 
 volumes:
   organization_db_data:
   user_db_data:
   vacancy_db_data:
+  file_db_data:
+  minio_data:
+
+
+services:
+
+  # config-server:
+  #   image: config-server:latest
+  #   container_name: config_server_container
+  #   restart: no
+  #   networks:
+  #     - backend-net
+  #     - public-net
+  #   expose:
+  #     - "8888"
+
+  # eureka-server:
+  #   image: eureka-server:latest
+  #   container_name: eureka_server_container
+  #   restart: no
+  #   networks:
+  #     - backend-net
+  #   expose:
+  #     - "8761"
+
+  # gateway-service:
+  #   image: gateway-service:latest
+  #   container_name: gateway_service_container
+  #   restart: no
+  #   depends_on:
+  #     - eureka-server
+  #   networks:
+  #     - backend-net
+  #     - public-net
+  #   ports:
+  #     - "8080:8080"   # внешний порт
+
+  # organization-service:
+  #   image: organization-service:latest
+  #   container_name: organization_service_container
+  #   restart: no
+  #   depends_on:
+  #     - eureka-server
+  #     - config-server
+  #     - organization-db
+  #   networks:
+  #     - backend-net
+  #   environment:
+  #     DB_URL: r2dbc:postgresql://organization-db:5432/${DB_ORG_NAME}
+  #     DB_URL_2: jdbc:postgresql://organization-db:5432/${DB_ORG_NAME}
+  #     DB_USER: ${DB_ORG_USER}
+  #     DB_PASS: ${DB_ORG_PASS}
+  #     JWT_SECRET: ${JWT_SECRET}
+
+  # organization-db:
+  #   image: postgres:17
+  #   container_name: organization_db_container
+  #   restart: no
+  #   networks:
+  #     - backend-net
+  #   expose:
+  #     - "5432"
+  #   environment:
+  #     POSTGRES_USER: ${DB_ORG_USER}
+  #     POSTGRES_PASSWORD: ${DB_ORG_PASS}
+  #     POSTGRES_DB: ${DB_ORG_NAME}
+  #   volumes:
+  #     - organization_db_data:/var/lib/postgresql/data
+
+  # user-service:
+  #   image: user-service:latest
+  #   container_name: user_service_container
+  #   restart: no
+  #   depends_on:
+  #     - eureka-server
+  #     - config-server
+  #     - user-db
+  #   networks:
+  #     - backend-net
+  #   environment:
+  #     DB_URL: jdbc:postgresql://user-db:5432/${DB_USER_NAME}
+  #     DB_USER: ${DB_USER_USER}
+  #     DB_PASS: ${DB_USER_PASS}
+  #     JWT_SECRET: ${JWT_SECRET}
+  #     SUPERVISOR_EMAIL: ${SUPERVISOR_EMAIL}
+  #     SUPERVISOR_PASS: ${SUPERVISOR_PASS}
+
+  # user-db:
+  #   image: postgres:17
+  #   container_name: user_db_container
+  #   restart: no
+  #   networks:
+  #     - backend-net
+  #   expose:
+  #     - "5432"
+  #   environment:
+  #     POSTGRES_USER: ${DB_USER_USER}
+  #     POSTGRES_PASSWORD: ${DB_USER_PASS}
+  #     POSTGRES_DB: ${DB_USER_NAME}
+  #   volumes:
+  #     - user_db_data:/var/lib/postgresql/data
+
+  # vacancy-service:
+  #   image: vacancy-service:latest
+  #   container_name: vacancy_service_container
+  #   restart: no
+  #   depends_on:
+  #     - eureka-server
+  #     - config-server
+  #     - vacancy-db
+  #   networks:
+  #     - backend-net
+  #   environment:
+  #     DB_URL: jdbc:postgresql://vacancy-db:5432/${DB_VACANCY_NAME}
+  #     DB_USER: ${DB_VACANCY_USER}
+  #     DB_PASS: ${DB_VACANCY_PASS}
+  #     JWT_SECRET: ${JWT_SECRET}
+
+  # vacancy-db:
+  #   image: postgres:17
+  #   container_name: vacancy_db_container
+  #   restart: no
+  #   networks:
+  #     - backend-net
+  #   expose:
+  #     - "5432"
+  #   environment:
+  #     POSTGRES_USER: ${DB_VACANCY_USER}
+  #     POSTGRES_PASSWORD: ${DB_VACANCY_PASS}
+  #     POSTGRES_DB: ${DB_VACANCY_NAME}
+  #   volumes:
+  #     - vacancy_db_data:/var/lib/postgresql/data
+
+  kafka-controller-1:
+    image: apache/kafka:latest
+    container_name: kafka_controller_1_container
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: controller
+      KAFKA_LISTENERS: CONTROLLER://:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      - backend-net
+
+  kafka-controller-2:
+    image: apache/kafka:latest
+    container_name: kafka_controller_2_container
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_PROCESS_ROLES: controller
+      KAFKA_LISTENERS: CONTROLLER://:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      - backend-net
+
+  kafka-controller-3:
+    image: apache/kafka:latest
+    container_name: kafka_controller_3_container
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_PROCESS_ROLES: controller
+      KAFKA_LISTENERS: CONTROLLER://:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      - backend-net    
+
+  kafka-broker-1:
+    image: apache/kafka:latest
+    container_name: kafka_broker_1_container
+    environment:
+      KAFKA_NODE_ID: 4
+      KAFKA_PROCESS_ROLES: broker
+      KAFKA_LISTENERS: 'PLAINTEXT://:19092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-broker-1:19092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: false
+    networks:
+      - backend-net
+    depends_on:
+      - kafka-controller-1
+      - kafka-controller-2
+      - kafka-controller-3
+
+  kafka-broker-2:
+    image: apache/kafka:latest
+    container_name: kafka_broker_2_container
+    environment:
+      KAFKA_NODE_ID: 5
+      KAFKA_PROCESS_ROLES: broker
+      KAFKA_LISTENERS: 'PLAINTEXT://:19092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-broker-2:19092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: false
+    networks:
+      - backend-net
+    depends_on:
+      - kafka-controller-1
+      - kafka-controller-2
+      - kafka-controller-3
+
+  kafka-broker-3:
+    image: apache/kafka:latest
+    container_name: kafka_broker_3_container
+    environment:
+      KAFKA_NODE_ID: 6
+      KAFKA_PROCESS_ROLES: broker
+      KAFKA_LISTENERS: 'PLAINTEXT://:19092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-broker-3:19092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: false
+    networks:
+      - backend-net
+    depends_on:
+      - kafka-controller-1
+      - kafka-controller-2
+      - kafka-controller-3
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka_ui_container
+    expose:
+      - "8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=broker
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka-broker-1:19092,kafka-broker-2:19092,kafka-broker-3:19092
+      - SERVER_SERVLET_CONTEXT_PATH=/kafka
+    networks:
+      - backend-net
+    depends_on:
+      - kafka-broker-1
+      - kafka-broker-2
+      - kafka-broker-3
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio_container
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    networks:
+      - backend-net
+    command: server /data --console-address ":9001"
+    expose:
+      - "9000"
+      - "9001"
+    volumes:
+      - minio_data:/data
+
+  # file-service:
+  #   image: file-service:latest
+  #   container_name: file_service_container
+  #   build: ./fileService
+  #   environment:
+  #     DB_URL: jdbc:postgresql://file-db:5432/${DB_FILE_NAME}
+  #     DB_USER: ${DB_FILE_USER}
+  #     DB_PASS: ${DB_FILE_PASS}
+
+  #     MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+  #     MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+  #   networks:
+  #     - backend-net
+  #   # ports:
+  #   #   - "8087:8087"
+  #   depends_on:
+  #     - minio
+  #     - file-db
+
+  # file-db:
+  #   image: postgres:17
+  #   container_name: file_db_container
+  #   restart: no
+  #   networks:
+  #     - backend-net
+  #   expose:
+  #     - "5432"
+  #   environment:
+  #     POSTGRES_USER: ${DB_FILE_USER}
+  #     POSTGRES_PASSWORD: ${DB_FILE_PASS}
+  #     POSTGRES_DB: ${DB_FILE_NAME}
+  #   volumes:
+  #     - file_db_data:/var/lib/postgresql/data
+

@@ -1,4 +1,4 @@
-package com.vacancy.organization.config;
+package com.vacancy.organization.repository;
 
 import org.flywaydb.core.Flyway;
 import org.springframework.boot.autoconfigure.flyway.FlywayProperties;

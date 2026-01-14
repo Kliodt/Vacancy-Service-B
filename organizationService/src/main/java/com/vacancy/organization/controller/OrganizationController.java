@@ -3,7 +3,6 @@ package com.vacancy.organization.controller;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.vacancy.organization.model.Organization;
+import com.vacancy.organization.model.dto.OrganizationRequestCreateDto;
 import com.vacancy.organization.model.dto.OrganizationRequestUpdateDto;
 import com.vacancy.organization.model.dto.OrganizationResponseDto;
 import com.vacancy.organization.service.OrganizationService;
@@ -33,11 +33,6 @@ public class OrganizationController {
     private final OrganizationService organizationService;
     private final ModelMapper modelMapper = new ModelMapper();
 
-    private Mono<Long> getCurrentUserId() {
-        return ReactiveSecurityContextHolder.getContext()
-                .map(ctx -> Long.valueOf((String) ctx.getAuthentication().getPrincipal()));
-    }
-
     @Operation(summary = "Получить все организации")
     @GetMapping
     public Flux<OrganizationResponseDto> getAllOrganizations(
@@ -55,33 +50,22 @@ public class OrganizationController {
                 .map(ResponseEntity::ok);
     }
 
-    @Operation(summary = "Создать организацию")
+    @Operation(summary = "Создать организацию (только supervisor)")
     @PostMapping
     public Mono<ResponseEntity<OrganizationResponseDto>> createOrganization(
-            @RequestBody @Valid OrganizationRequestUpdateDto organization) {
-        return getCurrentUserId()
-                .flatMap(curr -> organizationService
-                        .createOrganization(modelMapper.map(organization, Organization.class), curr)
-                        .map(org -> modelMapper.map(org, OrganizationResponseDto.class))
-                        .map(org -> ResponseEntity.status(HttpStatus.CREATED).body(org)));
+            @RequestBody @Valid OrganizationRequestCreateDto organization) {
+        return organizationService
+                .createOrganization(modelMapper.map(organization, Organization.class))
+                .map(org -> modelMapper.map(org, OrganizationResponseDto.class))
+                .map(org -> ResponseEntity.status(HttpStatus.CREATED).body(org));
     }
 
     @Operation(summary = "Обновить организацию")
     @PutMapping("/{id}")
     public Mono<ResponseEntity<OrganizationResponseDto>> updateOrganization(@PathVariable Long id,
             @RequestBody @Valid OrganizationRequestUpdateDto organization) {
-        return getCurrentUserId()
-                .flatMap(curr -> organizationService
-                        .updateOrganization(id, modelMapper.map(organization, Organization.class), curr)
-                        .map(org -> modelMapper.map(org, OrganizationResponseDto.class))
-                        .map(ResponseEntity::ok));
-    }
-
-    @Operation(summary = "Обновить директора организации (только supervisor)")
-    @PutMapping("/{id}/director")
-    public Mono<ResponseEntity<OrganizationResponseDto>> updateDirector(@PathVariable Long id,
-        @RequestParam Long directorId) {
-        return organizationService.updateDirector(id, directorId)
+        return organizationService
+                .updateOrganization(id, modelMapper.map(organization, Organization.class))
                 .map(org -> modelMapper.map(org, OrganizationResponseDto.class))
                 .map(ResponseEntity::ok);
     }
@@ -89,9 +73,8 @@ public class OrganizationController {
     @Operation(summary = "Удалить организацию")
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Void>> deleteOrganization(@PathVariable Long id) {
-        return getCurrentUserId()
-                .flatMap(curr -> organizationService.deleteOrganization(id, curr)
-                        .thenReturn(ResponseEntity.noContent().build()));
+        return organizationService.deleteOrganization(id)
+                .thenReturn(ResponseEntity.noContent().build());
     }
 
 }

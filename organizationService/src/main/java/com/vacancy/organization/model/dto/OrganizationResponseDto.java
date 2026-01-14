@@ -15,5 +15,4 @@ public class OrganizationResponseDto {
     private Long id;
     private String nickname;
     private String email;
-    private Long director;
 }

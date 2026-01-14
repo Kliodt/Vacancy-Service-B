@@ -2,6 +2,7 @@ package com.vacancy.organization.service;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.vacancy.organization.exceptions.RequestException;
@@ -16,11 +17,14 @@ import reactor.core.publisher.Mono;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ROLE_USER')")
+@PreAuthorize("isAuthenticated()")
 public class OrganizationServiceImpl implements OrganizationService {
 
-    private static final String ORGANIZATION_NOT_FOUND = "Организация не найдена";
+    private static final String ORG_NOT_FOUND_STR = "Организация не найдена";
+    private static final String ORG_SAME_EMAIL_STR = "С таким email уже зарегистрирована другая организация";
+
     private final OrganizationRepository organizationRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public Flux<Organization> getAllOrganizations(int page, int size) {
         if (size > 50)
@@ -31,62 +35,39 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     public Mono<Organization> getOrganizationById(long id) {
         return organizationRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORGANIZATION_NOT_FOUND)));
-    }
-
-    public Mono<Organization> createOrganization(Organization organization, Long currentUserId) {
-        organization.setDirector(currentUserId);
-        return organizationRepository.findOrganizationByEmail(organization.getEmail())
-                .flatMap(existing -> Mono.<Organization>error(new RequestException(HttpStatus.CONFLICT,
-                        "С таким email уже зарегистрирована другая организация")))
-                .switchIfEmpty(organizationRepository.save(organization));
-    }
-
-    public Mono<Organization> updateOrganization(long id, Organization organization, Long currentUserId) {
-        return organizationRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORGANIZATION_NOT_FOUND)))
-                .flatMap(existingOrganization -> {
-                    if (!existingOrganization.getDirector().equals(currentUserId)) {
-                        return Mono.error(new RequestException(HttpStatus.FORBIDDEN,
-                                "Нет прав на изменение организации"));
-                    }
-                    return organizationRepository.findOrganizationByEmail(organization.getEmail())
-                            .flatMap(existingByEmail -> {
-                                if (!existingByEmail.getId().equals(id)) {
-                                    return Mono.error(new RequestException(HttpStatus.CONFLICT,
-                                            "С таким email уже зарегистрирована другая организация"));
-                                }
-                                return Mono.empty();
-                            })
-                            .switchIfEmpty(Mono.just(existingOrganization))
-                            .flatMap(org -> {
-                                existingOrganization.updateWithOther(organization);
-                                existingOrganization.setDirector(existingOrganization.getDirector());
-                                return organizationRepository.save(existingOrganization);
-                            });
-                });
-    }
-
-    public Mono<Void> deleteOrganization(long id, Long currentUserId) {
-        return organizationRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORGANIZATION_NOT_FOUND)))
-                .flatMap(existing -> {
-                    if (!existing.getDirector().equals(currentUserId)) {
-                        return Mono.error(new RequestException(HttpStatus.FORBIDDEN,
-                                "Нет прав на удаление организации"));
-                    }
-                    return organizationRepository.deleteById(id);
-                });
+                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORG_NOT_FOUND_STR)));
     }
 
     @PreAuthorize("hasRole('ROLE_SUPERVISOR')")
-    public Mono<Organization> updateDirector(long id, Long newDirectorId) {
+    public Mono<Organization> createOrganization(Organization organization) {
+        return organizationRepository.findOrganizationByEmail(organization.getEmail())
+                .flatMap(existing -> Mono
+                        .<Organization>error(new RequestException(HttpStatus.CONFLICT, ORG_SAME_EMAIL_STR)))
+                .switchIfEmpty(Mono.fromCallable(() -> {
+                    organization.setPassword(passwordEncoder.encode(organization.getPassword()));
+                    return organization;
+                }).flatMap(organizationRepository::save));
+    }
+
+    @PreAuthorize("hasRole('ROLE_ORGANIZATION') and #id == authentication.principal")
+    public Mono<Organization> updateOrganization(long id, Organization organization) {
         return organizationRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORGANIZATION_NOT_FOUND)))
-                .flatMap(existing -> {
-                    existing.setDirector(newDirectorId);
-                    return organizationRepository.save(existing);
-                });
+                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORG_NOT_FOUND_STR)))
+                .flatMap(oldOrg -> organizationRepository
+                        .findOrganizationByEmail(organization.getEmail())
+                        .switchIfEmpty(Mono.just(oldOrg))
+                        .flatMap(existingByEmail -> {
+                            if (!existingByEmail.getId().equals(id)) {
+                                return Mono.error(new RequestException(HttpStatus.CONFLICT, ORG_SAME_EMAIL_STR));
+                            }
+                            oldOrg.updateWithOther(organization);
+                            return organizationRepository.save(oldOrg);
+                        }));
+    }
+
+    @PreAuthorize("hasRole('ROLE_ORGANIZATION') and #id == authentication.principal")
+    public Mono<Void> deleteOrganization(long id) {
+        return organizationRepository.deleteById(id);
     }
 
 }

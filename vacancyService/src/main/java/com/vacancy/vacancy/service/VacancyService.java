@@ -9,9 +9,9 @@ import com.vacancy.vacancy.model.Vacancy;
 public interface VacancyService {
     Page<Vacancy> getAllVacancies(int page, int size);
     Vacancy getVacancyById(long id);
-    List<Vacancy> getVacanciesByOrganization(long id);
+    List<Vacancy> getVacanciesByOrganization(long orgId);
 
-    void deleteVacancy(long id, Long currUser);
-    Vacancy updateVacancy(long id, Vacancy vacancy, Long currUser);
-    Vacancy createVacancy(Vacancy vacancy, Long currUser);
+    void deleteVacancy(long organizationId, long vacancyId);
+    Vacancy updateVacancy(long organizationId, long vacancyId, Vacancy vacancy);
+    Vacancy createVacancy(long organizationId, Vacancy vacancy);
 }

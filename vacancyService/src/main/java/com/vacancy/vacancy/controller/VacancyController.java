@@ -2,21 +2,28 @@ package com.vacancy.vacancy.controller;
 
 import java.util.List;
 
-import io.swagger.v3.oas.annotations.Operation;
-import jakarta.validation.Valid;
-
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.vacancy.vacancy.model.Vacancy;
 import com.vacancy.vacancy.model.dto.VacancyDtoIn;
+import com.vacancy.vacancy.model.dto.VacancyDtoOut;
 import com.vacancy.vacancy.service.VacancyService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -27,56 +34,65 @@ public class VacancyController {
     private final VacancyService vacancyService;
     private final ModelMapper modelMapper;
 
-    private Long getCurrentUserId() {
-        return Long.valueOf((String) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
-    }
-
     @Operation(summary = "Получить все вакансии")
     @GetMapping
-    public ResponseEntity<List<Vacancy>> getAllVacancies(
+    public ResponseEntity<List<VacancyDtoOut>> getAllVacancies(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
 
         Page<Vacancy> vacancyPage = vacancyService.getAllVacancies(page, size);
+        List<VacancyDtoOut> dtoList = vacancyPage.getContent().stream()
+                .map(v -> modelMapper.map(v, VacancyDtoOut.class)).toList();
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-Total-Count", String.valueOf(vacancyPage.getTotalElements()));
 
-        return ResponseEntity.ok().headers(headers).body(vacancyPage.getContent());
+        return ResponseEntity.ok().headers(headers).body(dtoList);
     }
 
     @Operation(summary = "Получить вакансию по id")
     @GetMapping("/{vacancyId}")
-    public ResponseEntity<Vacancy> getVacancyById(@PathVariable Long vacancyId) {
-        return ResponseEntity.ok(vacancyService.getVacancyById(vacancyId));
+    public ResponseEntity<VacancyDtoOut> getVacancyById(@PathVariable Long vacancyId) {
+        Vacancy v = vacancyService.getVacancyById(vacancyId);
+        return ResponseEntity.ok(modelMapper.map(v, VacancyDtoOut.class));
     }
 
     @Operation(summary = "Получить все вакансии по id организации")
-    @GetMapping("/organization/{organizationId}")
-    public ResponseEntity<List<Vacancy>> getVacancyByOrganization(@PathVariable Long organizationId) {
-        return ResponseEntity.ok(vacancyService.getVacanciesByOrganization(organizationId));
+    @GetMapping("/organization/{organizationId}/vacancy")
+    public ResponseEntity<List<VacancyDtoOut>> getVacancyByOrganization(@PathVariable Long organizationId) {
+        List<Vacancy> vacancies = vacancyService.getVacanciesByOrganization(organizationId);
+        List<VacancyDtoOut> dtoList = vacancies.stream()
+                .map(v -> modelMapper.map(v, VacancyDtoOut.class)).toList();
+        return ResponseEntity.ok(dtoList);
     }
 
     @Operation(summary = "Создать вакансию")
-    @PostMapping
-    public ResponseEntity<Vacancy> createVacancy(@Valid @RequestBody VacancyDtoIn vacancy) {
+    @PostMapping("/organization/{organizationId}/vacancy")
+    public ResponseEntity<VacancyDtoOut> createVacancy(
+            @PathVariable Long organizationId,
+            @Valid @RequestBody VacancyDtoIn vacancy) {
         Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
-        return ResponseEntity.status(HttpStatus.CREATED).body(vacancyService.createVacancy(vac, getCurrentUserId()));
+        Vacancy created = vacancyService.createVacancy(organizationId, vac);
+        return ResponseEntity.status(HttpStatus.CREATED).body(modelMapper.map(created, VacancyDtoOut.class));
     }
 
     @Operation(summary = "Обновить вакансию")
-    @PutMapping("/{vacancyId}")
-    public ResponseEntity<Vacancy> updateVacancy(
+    @PutMapping("/organization/{organizationId}/vacancy/{vacancyId}")
+    public ResponseEntity<VacancyDtoOut> updateVacancy(
+            @PathVariable Long organizationId,
             @PathVariable Long vacancyId,
             @Valid @RequestBody VacancyDtoIn vacancy) {
         Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
-        return ResponseEntity.ok(vacancyService.updateVacancy(vacancyId, vac, getCurrentUserId()));
+        Vacancy updated = vacancyService.updateVacancy(organizationId, vacancyId, vac);
+        return ResponseEntity.ok(modelMapper.map(updated, VacancyDtoOut.class));
     }
 
     @Operation(summary = "Удалить вакансию")
-    @DeleteMapping("/{vacancyId}")
-    public ResponseEntity<Void> deleteVacancy(@PathVariable Long vacancyId) {
-        vacancyService.deleteVacancy(vacancyId, getCurrentUserId());
+    @DeleteMapping("/organization/{organizationId}/vacancy/{vacancyId}")
+    public ResponseEntity<Void> deleteVacancy(
+            @PathVariable Long vacancyId,
+            @PathVariable Long organizationId) {
+        vacancyService.deleteVacancy(organizationId, vacancyId);
         return ResponseEntity.noContent().build();
     }
 

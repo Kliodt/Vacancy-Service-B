@@ -43,6 +43,5 @@ public class Vacancy {
         this.setTitle(other.getTitle());
         this.setDescription(other.getDescription());
         this.setSalary(other.getSalary());
-        this.setOrganizationId(other.getOrganizationId());
     }
 }

@@ -22,6 +22,16 @@ spring:
   output:
     ansi.enabled: ALWAYS
 
+  # kafka:
+  #   bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}  # список брокеров
+  #   producer:
+  #     key-serializer: org.apache.kafka.common.serialization.StringSerializer
+  #     value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  #     acks: 1
+  #   consumer:
+  #     group-id: user-service
+  #     auto-offset-reset: earliest
+
 # jwt:
 #   secret: ${JWT_SECRET}
 #   expiration-ms: 3600000  # 1 hour

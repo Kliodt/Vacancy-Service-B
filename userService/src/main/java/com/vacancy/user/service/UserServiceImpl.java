@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import com.vacancy.user.kafka.KafkaProducerService;
 
 @Service
 @Slf4j
@@ -30,6 +31,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final Clients clients;
     private final PasswordEncoder passwordEncoder;
+    private final KafkaProducerService kafkaProducer;
 
     public Flux<User> getAllUsers(int page, int size) {
         if (size > 50)
@@ -79,6 +81,7 @@ public class UserServiceImpl implements UserService {
     public Mono<Void> deleteUser(long id) {
         return Mono.fromRunnable(() -> userRepository.deleteById(id))
                 .subscribeOn(Schedulers.boundedElastic())
+                .then(kafkaProducer.sendUserDeleted(id))
                 .then();
     }
 

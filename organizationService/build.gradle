@@ -39,6 +39,10 @@ dependencies {
 
     implementation 'org.modelmapper:modelmapper:3.2.5'
 
+    // Kafka
+    implementation 'io.projectreactor.kafka:reactor-kafka:1.3.23'
+    implementation 'org.springframework.kafka:spring-kafka'
+
     // JWT and security
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'

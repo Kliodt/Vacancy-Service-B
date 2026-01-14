@@ -2,10 +2,12 @@ package com.vacancy.organization;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.support.SpringMvcContract;
 import org.springframework.context.annotation.Bean;
@@ -21,6 +23,8 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import reactivefeign.spring.config.EnableReactiveFeignClients;
+import reactor.kafka.sender.KafkaSender;
+import reactor.kafka.sender.SenderOptions;
 
 @SpringBootApplication
 @EnableDiscoveryClient
@@ -51,6 +55,14 @@ public class OrganizationServiceApplication {
     public Contract reactiveFeignContract(@Qualifier("webFluxConversionService") ConversionService conversionService) {
         // for feign
         return new SpringMvcContract(new ArrayList<>(), conversionService);
+    }
+
+    @Bean
+    public KafkaSender<String, String> kafkaSender(KafkaProperties kafkaProperties) {
+        // for reactive kafka
+        Map<String, Object> props = kafkaProperties.buildProducerProperties();
+        SenderOptions<String, String> options = SenderOptions.create(props);
+        return KafkaSender.create(options);
     }
 
 }

@@ -6,6 +6,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.vacancy.organization.exceptions.RequestException;
+import com.vacancy.organization.kafka.KafkaProducerService;
 import com.vacancy.organization.model.Organization;
 import com.vacancy.organization.repository.OrganizationRepository;
 
@@ -25,6 +26,7 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     private final OrganizationRepository organizationRepository;
     private final PasswordEncoder passwordEncoder;
+    private final KafkaProducerService kafkaProducer;
 
     public Flux<Organization> getAllOrganizations(int page, int size) {
         if (size > 50)
@@ -67,7 +69,9 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     @PreAuthorize("hasRole('ROLE_ORGANIZATION') and #id == authentication.principal")
     public Mono<Void> deleteOrganization(long id) {
-        return organizationRepository.deleteById(id);
+        return Mono.fromRunnable(() -> organizationRepository.deleteById(id))
+                .then(kafkaProducer.sendOrganizationDeleted(id))
+                .then();
     }
 
 }

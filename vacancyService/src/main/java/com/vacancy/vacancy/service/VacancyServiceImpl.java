@@ -15,6 +15,7 @@ import com.vacancy.vacancy.repository.VacancyRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.vacancy.vacancy.kafka.KafkaProducerService;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 public class VacancyServiceImpl implements VacancyService {
 
     private final VacancyRepository vacancyRepository;
+    private final KafkaProducerService kafkaProducer;
 
     public Page<Vacancy> getAllVacancies(int page, int size) {
         if (size > 50)
@@ -47,7 +49,8 @@ public class VacancyServiceImpl implements VacancyService {
         if (!vac.getOrganizationId().equals(organizationId))
             throw new RequestException(HttpStatus.FORBIDDEN, "Нельзя удалять вакансии другой организации");
 
-        vacancyRepository.deleteById(vacancyId);
+        vacancyRepository.delete(vac);
+        kafkaProducer.sendVacancyDeleted(vacancyId);
     }
 
     @PreAuthorize("hasRole('ROLE_ORGANIZATION') and #organizationId == authentication.principal")

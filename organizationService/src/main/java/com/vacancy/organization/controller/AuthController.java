@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.vacancy.organization.kafka.KafkaProducerService;
 import com.vacancy.organization.model.dto.AuthRequest;
 import com.vacancy.organization.model.dto.AuthResponse;
 import com.vacancy.organization.security.JwtUtils;
@@ -23,6 +24,7 @@ public class AuthController {
 
     private final JwtUtils jwtUtils;
     private final ReactiveAuthenticationManager authenticationManager;
+    private final KafkaProducerService kafkaProducer;
 
     @PostMapping("/login")
     public Mono<AuthResponse> login(@RequestBody AuthRequest request) {
@@ -31,9 +33,10 @@ public class AuthController {
                 request.getEmail(), request.getPassword());
 
         return authenticationManager.authenticate(authToken)
-                .map(auth -> {
+                .flatMap(auth -> {
                     UserDetails user = (UserDetails) auth.getPrincipal();
-                    return new AuthResponse(jwtUtils.generateToken(user));
+                    AuthResponse resp = new AuthResponse(jwtUtils.generateToken(user));
+                    return kafkaProducer.sendOrganizationLoggedIn(user.getUsername()).thenReturn(resp);
                 });
     }
 }

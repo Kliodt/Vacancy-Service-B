@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.vacancy.vacancy.exceptions.RequestException;
+import com.vacancy.vacancy.kafka.KafkaProducerService;
 import com.vacancy.vacancy.model.UserVacancyResponse;
 import com.vacancy.vacancy.model.Vacancy;
 import com.vacancy.vacancy.repository.UserVacancyResponseRepository;
@@ -22,6 +23,7 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
 
     private final UserVacancyResponseRepository responseRepository;
     private final VacancyRepository vacancyRepository;
+    private final KafkaProducerService kafkaProducer;
 
     private Vacancy getVacancyById(long id) {
         return vacancyRepository.findById(id)
@@ -50,7 +52,9 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
         if (!existing.isEmpty()) {
             responseRepository.deleteAll(existing);
         }
-        return responseRepository.save(new UserVacancyResponse(userId, vacancyId));
+        UserVacancyResponse saved = responseRepository.save(new UserVacancyResponse(userId, vacancyId));
+        kafkaProducer.sendVacancyResponseCreated(saved);
+        return saved;
     }
 
     @Transactional
@@ -61,7 +65,8 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
 
     @Transactional
     @PreAuthorize("hasRole('ROLE_ORGANIZATION') and #organizationId == authentication.principal")
-    public UserVacancyResponse changeResponseStatus(long responseId, long organizationId, UserVacancyResponse.Status status) {
+    public UserVacancyResponse changeResponseStatus(long responseId, long organizationId,
+            UserVacancyResponse.Status status) {
         UserVacancyResponse resp = responseRepository.findById(responseId).orElseThrow(
                 () -> new RequestException(HttpStatus.NOT_FOUND, "Отклик на вакансию не найден"));
 
@@ -71,6 +76,10 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
             throw new RequestException(HttpStatus.FORBIDDEN, "Вакансия не принадлежит данной организации");
 
         resp.setStatus(status);
+        resp = responseRepository.save(resp);
+
+        kafkaProducer.sendVacancyResponseUpdated(resp);
+
         return resp;
     }
 }

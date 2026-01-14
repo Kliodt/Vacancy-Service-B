@@ -45,6 +45,9 @@ dependencies {
 
     implementation 'org.modelmapper:modelmapper:3.2.5'
 
+    // Kafka
+    implementation 'org.springframework.kafka:spring-kafka'
+
     implementation 'org.jetbrains:annotations:24.0.1'
 
     implementation 'org.flywaydb:flyway-core:11.12.0'

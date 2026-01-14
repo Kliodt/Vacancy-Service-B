@@ -1,11 +1,9 @@
 package com.vacancy.user.service;
 
 import java.util.List;
-import java.util.Objects;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -23,14 +21,15 @@ import reactor.core.scheduler.Schedulers;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ROLE_USER')")
+@PreAuthorize("isAuthenticated()")
 public class UserServiceImpl implements UserService {
 
-    private static final String USER_NOT_FOUND = "Пользователь не найден";
+    private static final String USER_NOT_FOUND_STR = "Пользователь не найден";
+    private static final String USER_SAME_EMAIL_STR = "С таким email уже зарегистрирован другой пользователь";
 
     private final UserRepository userRepository;
     private final Clients clients;
-    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder passwordEncoder;
 
     public Flux<User> getAllUsers(int page, int size) {
         if (size > 50)
@@ -46,7 +45,7 @@ public class UserServiceImpl implements UserService {
 
     public Mono<User> getUserById(long id) {
         return Mono.fromCallable(() -> userRepository.findById(id)
-                .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND)))
+                .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND_STR)))
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -57,54 +56,41 @@ public class UserServiceImpl implements UserService {
                 user.setPassword(passwordEncoder.encode(user.getPassword()));
                 return userRepository.save(user);
             }
-            throw new RequestException(HttpStatus.CONFLICT, "Пользователь с таким email уже зарегистрирован");
+            throw new RequestException(HttpStatus.CONFLICT, USER_SAME_EMAIL_STR);
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
-    public Mono<User> updateUser(long id, User user, Long currentUserId) {
-        if (!Objects.equals(id, currentUserId)) {
-            return Mono.error(new RequestException(HttpStatus.FORBIDDEN, "Обновить можно только себя"));
-        }
+    @PreAuthorize("hasRole('ROLE_USER') and #id == authentication.principal")
+    public Mono<User> updateUser(long id, User user) {
         return Mono.fromCallable(() -> {
             User existingUser = userRepository.findById(id)
-                    .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND));
+                    .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND_STR));
 
             if (userRepository.findUserByEmail(user.getEmail()).isPresent()
                     && !existingUser.getEmail().equals(user.getEmail())) {
-                throw new RequestException(HttpStatus.CONFLICT,
-                        "С таким email уже зарегистрирован другой пользователь");
+                throw new RequestException(HttpStatus.CONFLICT, USER_SAME_EMAIL_STR);
             }
             existingUser.updateWithOther(user);
             return userRepository.save(existingUser);
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
-    public Mono<Void> deleteUser(long id, Long currentUserId) {
-        if (!Objects.equals(id, currentUserId)) {
-            return Mono.error(new RequestException(HttpStatus.FORBIDDEN,
-                    "Удалить можно только себя"));
-        }
+    @PreAuthorize("hasRole('ROLE_USER') and #id == authentication.principal")
+    public Mono<Void> deleteUser(long id) {
         return Mono.fromRunnable(() -> userRepository.deleteById(id))
                 .subscribeOn(Schedulers.boundedElastic())
                 .then();
     }
 
-    public Mono<List<Long>> getUserFavoriteVacancyIds(long id, Long currentUserId) {
-        if (!Objects.equals(id, currentUserId)) {
-            return Mono.error(new RequestException(HttpStatus.FORBIDDEN,
-                    "Можно смотреть только свои избранные вакансии"));
-        }
-        return getUserById(id)
-                .map(User::getFavoriteVacancyIds);
+    @PreAuthorize("hasRole('ROLE_USER') and #id == authentication.principal")
+    public Mono<List<Long>> getUserFavoriteVacancyIds(long id) {
+        return getUserById(id).map(User::getFavoriteVacancyIds);
     }
 
-    public Mono<Void> addToFavorites(long userId, long vacancyId, Long currentUserId) {
-        if (!Objects.equals(userId, currentUserId)) {
-            return Mono.error(new RequestException(HttpStatus.FORBIDDEN,
-                    "Можно изменять только свои избранные вакансии"));
-        }
+    @PreAuthorize("hasRole('ROLE_USER') and #userId == authentication.principal")
+    public Mono<Void> addToFavorites(long userId, long vacancyId) {
         return getUserById(userId)
-                .onErrorMap(err -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND))
+                .onErrorMap(err -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND_STR))
                 .flatMap(user -> clients.getVacancyById(vacancyId)
                         .onErrorMap(err -> new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена"))
                         .flatMap(idk -> {
@@ -117,11 +103,8 @@ public class UserServiceImpl implements UserService {
                         .then());
     }
 
-    public Mono<Void> removeFromFavorites(long userId, long vacancyId, Long currentUserId) {
-        if (!Objects.equals(userId, currentUserId)) {
-            return Mono.error(new RequestException(HttpStatus.FORBIDDEN,
-                    "Удалить изменять только свои избранные вакансии"));
-        }
+    @PreAuthorize("hasRole('ROLE_USER') and #userId == authentication.principal")
+    public Mono<Void> removeFromFavorites(long userId, long vacancyId) {
         return getUserById(userId)
                 .flatMap(user -> Mono.fromCallable(() -> {
                     user.getFavoriteVacancyIds().remove(vacancyId);

@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/auth/user")
 @RequiredArgsConstructor
 public class AuthController {
 

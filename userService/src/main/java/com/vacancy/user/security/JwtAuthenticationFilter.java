@@ -16,6 +16,7 @@ public class JwtAuthenticationFilter implements WebFilter {
 
     private final JwtUtils jwtUtils;
 
+    @SuppressWarnings("null")
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");

@@ -11,6 +11,10 @@ CREATE TABLE IF NOT EXISTS user_vacancy_response (
     id BIGSERIAL PRIMARY KEY,
     response_date TIMESTAMP(6) WITH TIME ZONE NOT NULL,
     user_id BIGINT NOT NULL,
-    vacancy_id BIGINT NOT NULL
+    vacancy_id BIGINT NOT NULL,
+    CONSTRAINT fk_vacancy
+        FOREIGN KEY(vacancy_id)
+        REFERENCES vacancy(id)
+        ON DELETE CASCADE
 );
 

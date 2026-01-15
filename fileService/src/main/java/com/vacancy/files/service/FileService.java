@@ -22,6 +22,8 @@ import lombok.RequiredArgsConstructor;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
@@ -35,6 +37,7 @@ public class FileService implements InitializingBean {
 
     private final FileRepository fileRepository;
     private S3Presigner presigner;
+    private S3Client s3Client;
 
     @Value("${minio.endpoint}")
     private String minioEndpoint;
@@ -52,15 +55,20 @@ public class FileService implements InitializingBean {
     private int presignExpirySeconds;
 
     private static final List<String> ALLOWED_MIMES = List.of("image/jpeg", "image/png", "application/pdf");
+    private static final String DEFAULT_BUCKET = "files/";
 
     @Override
     public void afterPropertiesSet() {
         this.presigner = S3Presigner.builder()
                 .endpointOverride(URI.create(minioEndpoint))
-                .region(Region.of("us-east-1"))
+                .region(Region.US_EAST_1)
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(minioAccessKey, minioSecretKey)))
                 .build();
+    }
+
+    private Long getCurrentPrincipalId() {
+        return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
     public FileObject getFileById(String id) {
@@ -79,7 +87,7 @@ public class FileService implements InitializingBean {
                 .signatureDuration(Duration.ofSeconds(presignExpirySeconds))
                 .getObjectRequest(builder -> builder
                         .bucket(minioBucket)
-                        .key("files/" + uuid) // bucket_name + uuid
+                        .key(DEFAULT_BUCKET + uuid) // bucket_name + uuid
                 )
                 .build();
 
@@ -91,7 +99,7 @@ public class FileService implements InitializingBean {
     @PreAuthorize("hasRole('ROLE_USER')")
     public UploadResponse requestUpload(UploadRequest request) {
 
-        Long principalId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long principalId = getCurrentPrincipalId();
 
         // basic checks
         if (!ALLOWED_MIMES.contains(request.getMime()))
@@ -107,13 +115,41 @@ public class FileService implements InitializingBean {
                 .putObjectRequest(
                         builder -> builder
                                 .bucket(minioBucket)
-                                .key("files/" + file.getUuid()) // bucket_name + file_name
+                                .key(DEFAULT_BUCKET + file.getUuid()) // bucket_name + file_name
                                 .contentType(request.getMime()))
                 .build();
 
         PresignedPutObjectRequest presigned = presigner.presignPutObject(presignReq);
 
         return new UploadResponse(file.getUuid(), presigned.url().toString(), presignExpirySeconds);
+    }
+
+    @PreAuthorize("hasRole('ROLE_USER')")
+    public void deleteFile(String uuid) {
+
+        FileObject file = getFileById(uuid);
+        Long principalId = getCurrentPrincipalId();
+
+        if (!principalId.equals(file.getOwnerId()))
+            throw new RequestException(HttpStatus.FORBIDDEN, "Можно удалять только свои файлы");
+
+        DeleteObjectRequest delReq = DeleteObjectRequest.builder()
+                .bucket(minioBucket)
+                .key(DEFAULT_BUCKET + uuid)
+                .build();
+
+        s3Client.deleteObject(delReq);
+
+        file.setStatus(FileObject.Status.DELETED);
+        fileRepository.save(file);
+    }
+
+    @PreAuthorize("hasRole('ROLE_USER')")
+    public List<FileObject> getAllMyFiles() {
+        Long principalId = getCurrentPrincipalId();
+        return fileRepository.findAllByOwnerId(principalId).stream()
+                .filter(file -> file.getStatus() == FileObject.Status.SAVED)
+                .toList();
     }
 
 }

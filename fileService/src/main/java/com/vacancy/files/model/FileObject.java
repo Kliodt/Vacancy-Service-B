@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 public class FileObject {
 
     public enum Status {
-        REQUESTED, SAVED
+        REQUESTED, SAVED, DELETED
     }
 
     @Column(nullable = false, unique = true)

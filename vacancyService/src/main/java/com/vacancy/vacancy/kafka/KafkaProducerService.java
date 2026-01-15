@@ -20,7 +20,9 @@ public class KafkaProducerService {
 
     public void sendVacancyDeleted(Long vacancyId) {
         try {
-            kafkaTemplate.send("vacancy.deleted", String.valueOf(vacancyId));
+            var node = objectMapper.createObjectNode();
+            node.put("vacancyId", vacancyId);
+            kafkaTemplate.send("vacancy.deleted", node.toString());
         } catch (Exception e) {
             log.error("Failed to send vacancy.deleted event", e);
         }

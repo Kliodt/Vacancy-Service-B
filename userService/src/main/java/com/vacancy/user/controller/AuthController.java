@@ -40,7 +40,8 @@ public class AuthController {
                 .flatMap(auth -> {
                     UserDetails user = (UserDetails) auth.getPrincipal();
                     AuthResponse resp = new AuthResponse(jwtUtils.generateToken(user));
-                    return kafkaProducer.sendUserLoggedIn(user.getUsername()).thenReturn(resp);
+                    Long userId = Long.parseLong(user.getUsername());
+                    return kafkaProducer.sendUserLoggedIn(userId).thenReturn(resp);
                 });
     }
 }

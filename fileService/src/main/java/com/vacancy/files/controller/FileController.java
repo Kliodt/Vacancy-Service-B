@@ -1,14 +1,20 @@
 package com.vacancy.files.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.vacancy.files.dto.PresignedUrlResponse;
+import com.vacancy.files.model.FileObject;
+import com.vacancy.files.model.dto.PresignedUrlResponse;
+import com.vacancy.files.model.dto.UploadRequest;
+import com.vacancy.files.model.dto.UploadResponse;
 import com.vacancy.files.service.FileService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -18,13 +24,17 @@ public class FileController {
     private final FileService fileService;
 
     @PostMapping("/upload")
-    public PresignedUrlResponse getUploadUrl(@RequestParam String key,
-            @RequestParam(required = false, defaultValue = "application/octet-stream") String contentType) {
-        return fileService.generateUploadUrl(key, contentType);
+    public UploadResponse requestUpload(@Valid @RequestBody UploadRequest request) {
+        return fileService.requestUpload(request);
     }
 
     @GetMapping("/download")
-    public PresignedUrlResponse getDownloadUrl(@RequestParam String key) {
-        return fileService.generateDownloadUrl(key);
+    public PresignedUrlResponse getDownloadUrl(@RequestParam String uuid) {
+        return fileService.generateDownloadUrl(uuid);
+    }
+
+    @GetMapping("/{uuid}")
+    public FileObject getFileInfo(@PathVariable String uuid) {
+        return fileService.getFileById(uuid);
     }
 }

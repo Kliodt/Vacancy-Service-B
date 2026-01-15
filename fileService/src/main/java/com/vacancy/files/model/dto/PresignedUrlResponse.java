@@ -1,4 +1,4 @@
-package com.vacancy.files.dto;
+package com.vacancy.files.model.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

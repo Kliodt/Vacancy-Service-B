@@ -35,12 +35,21 @@ spring:
       # ddl-auto: validate # todo
       ddl-auto: update
 
-  flyway:
-    enabled: false
-    # enabled: true # todo
-    url: ${DB_URL}
-    user: ${DB_USER}
-    password: ${DB_PASS}
+springdoc:
+  api-docs:
+    enabled: true 
+    path: /file/v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /file/swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+      base-path: "/file"
+
 
 
 minio:

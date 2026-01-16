@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.vacancy.user.client.Clients;
 import com.vacancy.user.exceptions.RequestException;
+import com.vacancy.user.kafka.KafkaProducerService;
 import com.vacancy.user.model.User;
 import com.vacancy.user.repository.UserRepository;
 
@@ -17,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import com.vacancy.user.kafka.KafkaProducerService;
 
 @Service
 @Slf4j
@@ -72,9 +72,27 @@ public class UserServiceImpl implements UserService {
                     && !existingUser.getEmail().equals(user.getEmail())) {
                 throw new RequestException(HttpStatus.CONFLICT, USER_SAME_EMAIL_STR);
             }
-            existingUser.updateWithOther(user);
-            return userRepository.save(existingUser);
-        }).subscribeOn(Schedulers.boundedElastic());
+            return existingUser;
+        }).subscribeOn(Schedulers.boundedElastic())
+                .flatMap(existingUser -> {
+                    String oldCvFile = (existingUser.getCvLink() == null) ? "" : existingUser.getCvLink().trim();
+                    String newCvFile = (user.getCvLink() == null) ? "" : user.getCvLink().trim();
+
+                    // If no new file provided or file didn't change, just save
+                    if (newCvFile.isEmpty() || newCvFile.equals(oldCvFile)) {
+                        existingUser.updateWithOther(user);
+                        return Mono.fromCallable(() -> userRepository.save(existingUser))
+                                .subscribeOn(Schedulers.boundedElastic());
+                    }
+
+                    // Otherwise, check file, then save
+                    return clients.getFileById(newCvFile)
+                            .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, "CV файл не найден")))
+                            .then(Mono.fromCallable(() -> {
+                                existingUser.updateWithOther(user);
+                                return userRepository.save(existingUser);
+                            }).subscribeOn(Schedulers.boundedElastic()));
+                });
     }
 
     @PreAuthorize("hasRole('ROLE_USER') and #id == authentication.principal")

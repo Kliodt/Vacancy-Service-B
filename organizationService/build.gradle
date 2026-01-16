@@ -28,10 +28,6 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator:3.3.3'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
-    implementation 'com.playtika.reactivefeign:feign-reactor-webclient:4.1.0'
-    implementation 'com.playtika.reactivefeign:feign-reactor-cloud:4.1.0'
-    implementation 'com.playtika.reactivefeign:feign-reactor-spring-configuration:4.1.0'
-    implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
     implementation 'org.springframework.cloud:spring-cloud-starter-bootstrap:4.1.0'
     implementation 'org.springframework.cloud:spring-cloud-starter-config:4.1.4'
 

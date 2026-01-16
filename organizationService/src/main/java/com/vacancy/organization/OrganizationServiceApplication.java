@@ -1,20 +1,15 @@
 package com.vacancy.organization;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
-import org.springframework.cloud.openfeign.support.SpringMvcContract;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.convert.ConversionService;
 
-import feign.Contract;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -22,13 +17,11 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
-import reactivefeign.spring.config.EnableReactiveFeignClients;
 import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderOptions;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@EnableReactiveFeignClients
 @Configuration
 @OpenAPIDefinition
 public class OrganizationServiceApplication {
@@ -51,11 +44,6 @@ public class OrganizationServiceApplication {
                                 .bearerFormat("JWT")));
     }
 
-    @Bean
-    public Contract reactiveFeignContract(@Qualifier("webFluxConversionService") ConversionService conversionService) {
-        // for feign
-        return new SpringMvcContract(new ArrayList<>(), conversionService);
-    }
 
     @Bean
     public KafkaSender<String, String> kafkaSender(KafkaProperties kafkaProperties) {

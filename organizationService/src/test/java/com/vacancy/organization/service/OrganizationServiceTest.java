@@ -3,16 +3,17 @@ package com.vacancy.organization.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -20,10 +21,14 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.vacancy.organization.exceptions.RequestException;
+import com.vacancy.organization.kafka.KafkaProducerService;
 import com.vacancy.organization.model.Organization;
 import com.vacancy.organization.repository.OrganizationRepository;
 
@@ -46,8 +51,10 @@ class OrganizationServiceTest {
     @Autowired
     OrganizationService organizationService;
 
+    @MockitoBean
+    KafkaProducerService kafkaProducerService;
+
     private Organization testOrganization;
-    private Long testOrganizationDirector = 10L;
 
     @BeforeAll
     static void beforeAll() {
@@ -73,6 +80,7 @@ class OrganizationServiceTest {
         registry.add("spring.r2dbc.username", postgres::getUsername);
         registry.add("spring.r2dbc.password", postgres::getPassword);
         registry.add("jwt.secret", () -> "fjqewh3oi4jgfng3u498gvn289rnv934h8fncv3p4fjn32vj3n8492");
+        registry.add("jwt.expiration-ms", () -> 3600000);
     }
 
     @BeforeEach
@@ -84,10 +92,13 @@ class OrganizationServiceTest {
         Organization org = new Organization();
         org.setEmail("example@gmail.com");
         org.setNickname("TestOrg");
-        org.setDirector(testOrganizationDirector);
         // Save a test organization for use in tests
         testOrganization = organizationRepository.save(org).block();
         assertNotNull(testOrganization);
+
+        // Stub kafka producer so tests don't require a running Kafka broker
+        when(kafkaProducerService.sendOrganizationDeleted(anyLong())).thenReturn(reactor.core.publisher.Mono.empty());
+        when(kafkaProducerService.sendOrganizationLoggedIn(anyLong())).thenReturn(reactor.core.publisher.Mono.empty());
     }
 
     @Test
@@ -113,7 +124,7 @@ class OrganizationServiceTest {
         toCreate.setEmail("new@example.com");
         toCreate.setNickname("NewOrg");
 
-        StepVerifier.create(organizationService.createOrganization(toCreate, 1L))
+        StepVerifier.create(organizationService.createOrganization(toCreate))
                 .expectNextMatches(o -> o.getId() != null && o.getEmail().equals("new@example.com"))
                 .verifyComplete();
     }
@@ -124,7 +135,7 @@ class OrganizationServiceTest {
         toCreate.setEmail(testOrganization.getEmail());
         toCreate.setNickname("NewOrg");
 
-        StepVerifier.create(organizationService.createOrganization(toCreate, 1L))
+        StepVerifier.create(organizationService.createOrganization(toCreate))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.CONFLICT, ((RequestException) e).code);
@@ -138,7 +149,7 @@ class OrganizationServiceTest {
         upd.setEmail("x@example.com");
         upd.setNickname("X");
 
-        StepVerifier.create(organizationService.updateOrganization(999999L, upd, 1L))
+        StepVerifier.create(organizationService.updateOrganization(999999L, upd))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.NOT_FOUND, ((RequestException) e).code);
@@ -151,7 +162,6 @@ class OrganizationServiceTest {
         Organization newOrg = new Organization();
         newOrg.setEmail("new@example.com");
         newOrg.setNickname("NewOrg");
-        newOrg.setDirector(testOrganizationDirector);
         newOrg = organizationRepository.save(newOrg).block();
         assertNotNull(newOrg);
 
@@ -159,9 +169,9 @@ class OrganizationServiceTest {
         Organization upd = new Organization();
         upd.setEmail(testOrganization.getEmail());
         upd.setNickname("Updated");
-        upd.setDirector(testOrganizationDirector);
+        // no director field any more
 
-        StepVerifier.create(organizationService.updateOrganization(newOrg.getId(), upd, testOrganizationDirector))
+        StepVerifier.create(organizationService.updateOrganization(newOrg.getId(), upd))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.CONFLICT, ((RequestException) e).code);
@@ -174,14 +184,14 @@ class OrganizationServiceTest {
         Organization upd = new Organization();
         upd.setEmail("updated@example.com");
         upd.setNickname("Updated");
-        upd.setDirector(testOrganizationDirector);
+        // no director field any more
 
         Organization saved = new Organization();
         saved.setId(testOrganization.getId());
         saved.setEmail(upd.getEmail());
         saved.setNickname(upd.getNickname());
 
-        StepVerifier.create(organizationService.updateOrganization(testOrganization.getId(), upd, testOrganizationDirector))
+        StepVerifier.create(organizationService.updateOrganization(testOrganization.getId(), upd))
                 .expectNextMatches(o -> o.getEmail().equals("updated@example.com") && o.getNickname().equals("Updated"))
                 .verifyComplete();
     }
@@ -191,34 +201,18 @@ class OrganizationServiceTest {
         Organization upd = new Organization();
         upd.setEmail(testOrganization.getEmail());
         upd.setNickname("Updated");
-        upd.setDirector(testOrganizationDirector);
+        // no director field any more
 
-        StepVerifier.create(organizationService.updateOrganization(testOrganization.getId(), upd, testOrganizationDirector))
+        StepVerifier.create(organizationService.updateOrganization(testOrganization.getId(), upd))
                 .expectNextMatches(o -> o.getEmail().equals(testOrganization.getEmail()) && o.getNickname().equals("Updated"))
                 .verifyComplete();
     }
 
     @Test
     void deleteOrganization_completes() {
-        StepVerifier.create(organizationService.deleteOrganization(testOrganization.getId(), testOrganizationDirector)).verifyComplete();
+        StepVerifier.create(organizationService.deleteOrganization(testOrganization.getId())).verifyComplete();
     }
 
-    @Test
-    void forbiddenWhenCurrentUserIdIsIncorrect() {
-        Long wrongId = 99999L;
-        assertAll("operations forbidden for wrong currentUserId",
-                () -> {
-                    RequestException ex = assertThrows(RequestException.class,
-                            () -> organizationService.updateOrganization(testOrganization.getId(), new Organization(), wrongId).block());
-                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
-                },
-                () -> {
-                    RequestException ex = assertThrows(RequestException.class,
-                            () -> organizationService.deleteOrganization(testOrganization.getId(), wrongId).block());
-                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
-                }
-        );
-    }
 
     @Test
     void getAllOrganizations() {
@@ -226,7 +220,6 @@ class OrganizationServiceTest {
             Organization o = new Organization();
             o.setEmail("org" + i + "@example.com");
             o.setNickname("Org" + i);
-            o.setDirector(testOrganizationDirector);
             organizationRepository.save(o).block();
         }
         Long count = organizationRepository.count().block();
@@ -242,7 +235,6 @@ class OrganizationServiceTest {
             Organization o = new Organization();
             o.setEmail("org" + i + "@example.com");
             o.setNickname("Org" + i);
-            o.setDirector(testOrganizationDirector);
             organizationRepository.save(o).block();
         }
         Long count = organizationRepository.count().block();

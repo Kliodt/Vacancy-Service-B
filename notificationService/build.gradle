@@ -27,6 +27,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator:3.3.3'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-bootstrap:4.1.0'
+    implementation 'org.springframework.cloud:spring-cloud-starter-config:4.1.4'
 
     implementation 'org.jetbrains:annotations:24.0.1'
     // implementation 'org.apache.kafka:kafka-clients:4.0.0'    

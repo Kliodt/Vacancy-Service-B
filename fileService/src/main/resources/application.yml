@@ -1,62 +1,39 @@
 server:
-  # todo: change to 0
-  port: 8087
+  port: 0
 
 spring:
   output:
     ansi.enabled: ALWAYS
 
-  # servlet:
-  #   multipart:
-  #     max-file-size: 5MB
+#   datasource:
+#     driver-class-name: org.postgresql.Driver
+#     url: ${DB_URL}
+#     username: ${DB_USER}
+#     password: ${DB_PASS}
 
-  # kafka:
-  #   bootstrap-servers: localhost:29092,localhost:39092,localhost:49092
+#   jpa:
+#     show-sql: true
+#     hibernate:
+#       ddl-auto: update
 
-  #   # todo: do I need all this
-  #   consumer:
-  #     group-id: demo-group
-  #     auto-offset-reset: earliest
-  #     key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-  #     value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-  #   producer:
-  #     key-serializer: org.apache.kafka.common.serialization.StringSerializer
-  #     value-serializer: org.apache.kafka.common.serialization.StringSerializer
+# springdoc:
+#   api-docs:
+#     enabled: true 
+#     path: /file/v3/api-docs
+#   swagger-ui:
+#     enabled: true
+#     path: /file/swagger-ui.html
 
-  datasource:
-    driver-class-name: org.postgresql.Driver
-    url: ${DB_URL}
-    username: ${DB_USER}
-    password: ${DB_PASS}
+# management:
+#   endpoints:
+#     web:
+#       exposure:
+#         include: "*"
+#       base-path: "/file"
 
-  jpa:
-    show-sql: true
-    hibernate:
-      # ddl-auto: validate # todo
-      ddl-auto: update
-
-springdoc:
-  api-docs:
-    enabled: true 
-    path: /file/v3/api-docs
-  swagger-ui:
-    enabled: true
-    path: /file/swagger-ui.html
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "*"
-      base-path: "/file"
-
-
-
-minio:
-  # todo: change in docker
-  # endpoint: http://minio:9000
-  endpoint: http://localhost:9000 
-  access-key: ${MINIO_ROOT_USER}
-  secret-key: ${MINIO_ROOT_PASSWORD}
-  bucket-name: files
-  presign-expiry-seconds: 90000
+# minio:
+#   endpoint: ${MINIO_ENDPOINT}
+#   access-key: ${MINIO_ROOT_USER}
+#   secret-key: ${MINIO_ROOT_PASSWORD}
+#   bucket-name: files
+#   presign-expiry-seconds: 90000

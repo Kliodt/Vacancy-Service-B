@@ -4,9 +4,7 @@ spring:
 
   cloud:
     config:
-      # todo: change in docker
-      uri: http://localhost:8888
-      # uri: http://config-server:8888
+      uri: ${CONFIG_SERVER:http://localhost:8888}
       fail-fast: true
 
   profiles:

@@ -28,7 +28,6 @@ public class KafkaProducerService {
                 .doOnError(e -> log.error("Failed to send organization.deleted event for id={}", organizationId, e));
     }
 
-    public Mono<Void> sendOrganizationLoggedIn(String email) {
     public Mono<Void> sendOrganizationLoggedIn(Long organizationId) {
         ObjectNode node = objectMapper.createObjectNode();
         node.put("organizationId", organizationId);

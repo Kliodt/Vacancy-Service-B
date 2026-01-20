@@ -24,7 +24,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/ws/**", "/ws").permitAll()
+                        .requestMatchers("/notification/ws/**", "/notification/ws").permitAll()
                         .anyRequest().denyAll()) // because web sockets
                 .sessionManagement(
                         sesMan -> sesMan.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

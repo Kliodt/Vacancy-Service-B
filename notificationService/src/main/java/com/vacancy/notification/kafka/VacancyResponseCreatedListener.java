@@ -18,7 +18,7 @@ public class VacancyResponseCreatedListener {
     private final WebSocketPushService webSocketPushService;
     private final JsonHelper helper;
 
-    @KafkaListener(topics = "vacancyResponse.created")
+    @KafkaListener(topics = "vacancyResponse.created", groupId = "notification-service")
     public void listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
         JsonNode node = helper.parseMessage(message);
         if (node == null) return;

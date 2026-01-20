@@ -21,7 +21,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     @SuppressWarnings("null")
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry
-                .addHandler(new JwtWebSocketHandler(sessionRegistry), "/ws")
+                .addHandler(new JwtWebSocketHandler(sessionRegistry), "/notification/ws")
                 .addInterceptors(new JwtHandshakeInterceptor(jwtUtils))
                 .setAllowedOriginPatterns("*");
     }

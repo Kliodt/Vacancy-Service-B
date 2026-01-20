@@ -18,7 +18,7 @@ public class UserLoginListener {
     private final WebSocketPushService webSocketPushService;
     private final JsonHelper helper;
 
-    @KafkaListener(topics = "user.login")
+    @KafkaListener(topics = "user.login", groupId = "notification-service")
     public void listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
         JsonNode node = helper.parseMessage(message);
         if (node == null) return;

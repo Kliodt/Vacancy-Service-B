@@ -6,7 +6,7 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.vacancy.notification.model.WSClient;
+import com.vacancy.notification.websocket.WSClient;
 import com.vacancy.notification.websocket.WebSocketPushService;
 
 import lombok.RequiredArgsConstructor;

@@ -1,4 +1,4 @@
-package com.vacancy.notification.model;
+package com.vacancy.notification.websocket;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

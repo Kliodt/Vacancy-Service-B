@@ -7,8 +7,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
-import com.vacancy.notification.model.WSClient;
-
 @Component
 public class WebSocketSessionRegistry {
 

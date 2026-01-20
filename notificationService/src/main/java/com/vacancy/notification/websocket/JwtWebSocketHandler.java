@@ -6,8 +6,6 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-import com.vacancy.notification.model.WSClient;
-
 import lombok.RequiredArgsConstructor;
 
 @SuppressWarnings("null")

@@ -7,6 +7,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.vacancy.vacancy.exceptions.RequestException;
@@ -42,22 +43,22 @@ public class VacancyServiceImpl implements VacancyService {
         return vacancyRepository.findByOrganizationId(orgId);
     }
 
-    @PreAuthorize("hasRole('ROLE_ORGANIZATION') and #organizationId == authentication.principal")
-    public void deleteVacancy(long organizationId, long vacancyId) {
+    @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
+    public void deleteVacancy(long vacancyId) {
         Vacancy vac = getVacancyById(vacancyId);
 
-        if (!vac.getOrganizationId().equals(organizationId))
+        if (!vac.getOrganizationId().equals(getPrincipal()))
             throw new RequestException(HttpStatus.FORBIDDEN, "Нельзя удалять вакансии другой организации");
 
         vacancyRepository.delete(vac);
         kafkaProducer.sendVacancyDeleted(vacancyId);
     }
 
-    @PreAuthorize("hasRole('ROLE_ORGANIZATION') and #organizationId == authentication.principal")
-    public Vacancy updateVacancy(long organizationId, long vacancyId, Vacancy vacancy) {
+    @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
+    public Vacancy updateVacancy(long vacancyId, Vacancy vacancy) {
         Vacancy oldVac = getVacancyById(vacancyId);
 
-        if (!oldVac.getOrganizationId().equals(organizationId))
+        if (!oldVac.getOrganizationId().equals(getPrincipal()))
             throw new RequestException(HttpStatus.FORBIDDEN, "Нельзя изменять вакансии другой организации");
 
         oldVac.updateWithOther(vacancy);
@@ -65,10 +66,13 @@ public class VacancyServiceImpl implements VacancyService {
         return vacancyRepository.save(oldVac);
     }
 
-    @PreAuthorize("hasRole('ROLE_ORGANIZATION') and #organizationId == authentication.principal")
-    public Vacancy createVacancy(long organizationId, Vacancy vacancy) {
-        vacancy.setOrganizationId(organizationId);
+    @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
+    public Vacancy createVacancy(Vacancy vacancy) {
+        vacancy.setOrganizationId(getPrincipal());
         return vacancyRepository.save(vacancy);
     }
 
+    private Long getPrincipal() {
+        return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    }
 }

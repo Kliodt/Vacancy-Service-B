@@ -35,7 +35,7 @@ public class VacancyController {
     private final ModelMapper modelMapper;
 
     @Operation(summary = "Получить все вакансии")
-    @GetMapping
+    @GetMapping(value = "/", params = "!organizationId")
     public ResponseEntity<List<VacancyDtoOut>> getAllVacancies(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
@@ -58,8 +58,8 @@ public class VacancyController {
     }
 
     @Operation(summary = "Получить все вакансии по id организации")
-    @GetMapping("/organization/{organizationId}/vacancy")
-    public ResponseEntity<List<VacancyDtoOut>> getVacancyByOrganization(@PathVariable Long organizationId) {
+    @GetMapping(value = "/", params = "organizationId")
+    public ResponseEntity<List<VacancyDtoOut>> getVacancyByOrganization(@RequestParam Long organizationId) {
         List<Vacancy> vacancies = vacancyService.getVacanciesByOrganization(organizationId);
         List<VacancyDtoOut> dtoList = vacancies.stream()
                 .map(v -> modelMapper.map(v, VacancyDtoOut.class)).toList();
@@ -67,32 +67,27 @@ public class VacancyController {
     }
 
     @Operation(summary = "Создать вакансию")
-    @PostMapping("/organization/{organizationId}/vacancy")
-    public ResponseEntity<VacancyDtoOut> createVacancy(
-            @PathVariable Long organizationId,
-            @Valid @RequestBody VacancyDtoIn vacancy) {
+    @PostMapping
+    public ResponseEntity<VacancyDtoOut> createVacancy(@Valid @RequestBody VacancyDtoIn vacancy) {
         Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
-        Vacancy created = vacancyService.createVacancy(organizationId, vac);
+        Vacancy created = vacancyService.createVacancy(vac);
         return ResponseEntity.status(HttpStatus.CREATED).body(modelMapper.map(created, VacancyDtoOut.class));
     }
 
     @Operation(summary = "Обновить вакансию")
-    @PutMapping("/organization/{organizationId}/vacancy/{vacancyId}")
+    @PutMapping(value = "/{vacancyId}")
     public ResponseEntity<VacancyDtoOut> updateVacancy(
-            @PathVariable Long organizationId,
             @PathVariable Long vacancyId,
             @Valid @RequestBody VacancyDtoIn vacancy) {
         Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
-        Vacancy updated = vacancyService.updateVacancy(organizationId, vacancyId, vac);
+        Vacancy updated = vacancyService.updateVacancy(vacancyId, vac);
         return ResponseEntity.ok(modelMapper.map(updated, VacancyDtoOut.class));
     }
 
     @Operation(summary = "Удалить вакансию")
-    @DeleteMapping("/organization/{organizationId}/vacancy/{vacancyId}")
-    public ResponseEntity<Void> deleteVacancy(
-            @PathVariable Long vacancyId,
-            @PathVariable Long organizationId) {
-        vacancyService.deleteVacancy(organizationId, vacancyId);
+    @DeleteMapping("/{vacancyId}")
+    public ResponseEntity<Void> deleteVacancy(@PathVariable Long vacancyId) {
+        vacancyService.deleteVacancy(vacancyId);
         return ResponseEntity.noContent().build();
     }
 

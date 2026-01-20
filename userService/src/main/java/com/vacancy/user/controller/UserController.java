@@ -77,24 +77,24 @@ public class UserController {
     }
 
     @Operation(summary = "Получить избранные вакансии пользователя")
-    @GetMapping("/{userId}/favorite")
+    @GetMapping("/{userId}/favorites")
     public Mono<ResponseEntity<List<Long>>> getUserFavorites(@PathVariable Long userId) {
         return userService.getUserFavoriteVacancyIds(userId)
                 .map(ResponseEntity::ok);
     }
 
     @Operation(summary = "Добавить вакансию в избранное")
-    @PutMapping("/{userId}/favorite/{vacancyId}")
+    @PutMapping("/{userId}/favorites")
     public Mono<ResponseEntity<Void>> addToFavorites(
             @PathVariable Long userId,
-            @PathVariable Long vacancyId) {
+            @RequestParam Long vacancyId) {
         return userService.addToFavorites(userId, vacancyId)
                 .thenReturn(ResponseEntity.noContent().build());
     }
 
     @Operation(summary = "Убрать вакансию из избранного")
-    @DeleteMapping("/{userId}/favorite/{vacancyId}")
-    public Mono<ResponseEntity<Void>> removeFromFavorites(@PathVariable Long userId, @PathVariable Long vacancyId) {
+    @DeleteMapping("/{userId}/favorites")
+    public Mono<ResponseEntity<Void>> removeFromFavorites(@PathVariable Long userId, @RequestParam Long vacancyId) {
         return userService.removeFromFavorites(userId, vacancyId)
                 .thenReturn(ResponseEntity.noContent().build());
     }

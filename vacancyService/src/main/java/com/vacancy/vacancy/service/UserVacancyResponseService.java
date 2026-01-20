@@ -5,11 +5,11 @@ import java.util.List;
 import com.vacancy.vacancy.model.UserVacancyResponse;
 
 public interface UserVacancyResponseService {
-    public List<UserVacancyResponse> getUserResponses(long userId);
-    public List<UserVacancyResponse> getVacancyResponses(long organizationId, long vacancyId);
+    public List<UserVacancyResponse> getUserResponses();
+    public List<UserVacancyResponse> getVacancyResponses(long vacancyId);
 
-    public UserVacancyResponse respondToVacancy(long vacancyId, long userId);
-    public void removeResponseFromVacancy(long vacancyId, long userId);
+    public UserVacancyResponse respondToVacancy(long vacancyId);
+    public void removeResponseFromVacancy(long vacancyId);
 
-    public UserVacancyResponse changeResponseStatus(long responseId, long organizationId, UserVacancyResponse.Status status);
+    public UserVacancyResponse changeResponseStatus(long responseId, UserVacancyResponse.Status status);
 }

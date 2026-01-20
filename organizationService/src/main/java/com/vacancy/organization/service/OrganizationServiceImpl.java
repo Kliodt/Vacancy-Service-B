@@ -24,15 +24,11 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     private static final String ORG_NOT_FOUND_STR = "Организация не найдена";
     private static final String ORG_SAME_EMAIL_STR = "С таким email уже зарегистрирована другая организация";
-    private static final String ORG_ACCESS_FORBIDDEN = "Нет доступа к организации";
+    private static final String ORG_ACCESS_FORBIDDEN = "Доступ к организации запрещен";
 
     private final OrganizationRepository organizationRepository;
     private final PasswordEncoder passwordEncoder;
     private final KafkaProducerService kafkaProducer;
-
-    private Object getPrincipal() {
-        return SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    }
 
     public Flux<Organization> getAllOrganizations(int page, int size) {
         if (size > 50)
@@ -61,6 +57,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     public Mono<Organization> updateOrganization(long id, Organization organization) {
         if (!getPrincipal().equals(id)) 
             return Mono.error(new RequestException(HttpStatus.FORBIDDEN, ORG_ACCESS_FORBIDDEN));
+
         return organizationRepository.findById(id)
                 .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORG_NOT_FOUND_STR)))
                 .flatMap(oldOrg -> organizationRepository
@@ -79,9 +76,13 @@ public class OrganizationServiceImpl implements OrganizationService {
     public Mono<Void> deleteOrganization(long id) {
         if (!getPrincipal().equals(id)) 
             return Mono.error(new RequestException(HttpStatus.FORBIDDEN, ORG_ACCESS_FORBIDDEN));
+
         return Mono.fromRunnable(() -> organizationRepository.deleteById(id))
                 .then(kafkaProducer.sendOrganizationDeleted(id))
                 .then();
     }
 
+    private Long getPrincipal() {
+        return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    }
 }

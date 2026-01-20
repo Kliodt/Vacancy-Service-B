@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -62,8 +63,11 @@ public class UserServiceImpl implements UserService {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
-    @PreAuthorize("hasRole('ROLE_USER') and #id == authentication.principal")
+    @PreAuthorize("hasRole('ROLE_USER')")
     public Mono<User> updateUser(long id, User user) {
+        if (!getPrincipal().equals(id))
+            return Mono.error(new RequestException(HttpStatus.FORBIDDEN, "Можно обновлять только свои данные"));
+
         return Mono.fromCallable(() -> {
             User existingUser = userRepository.findById(id)
                     .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND_STR));
@@ -88,7 +92,7 @@ public class UserServiceImpl implements UserService {
                     // Otherwise, check file, then save
                     return clients.getFileById(newCvFile)
                             .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, "CV файл не найден")))
-                            .onErrorMap(idk -> new RequestException(HttpStatus.NOT_FOUND, "CV файл не найден"))
+                            .onErrorMap(err -> new RequestException(HttpStatus.NOT_FOUND, "CV файл не найден"))
                             .then(Mono.fromCallable(() -> {
                                 existingUser.updateWithOther(user);
                                 return userRepository.save(existingUser);
@@ -96,21 +100,30 @@ public class UserServiceImpl implements UserService {
                 });
     }
 
-    @PreAuthorize("hasRole('ROLE_USER') and #id == authentication.principal")
+    @PreAuthorize("hasRole('ROLE_USER')")
     public Mono<Void> deleteUser(long id) {
+        if (!getPrincipal().equals(id))
+            return Mono.error(new RequestException(HttpStatus.FORBIDDEN, "Можно удалять только себя"));
+
         return Mono.fromRunnable(() -> userRepository.deleteById(id))
                 .subscribeOn(Schedulers.boundedElastic())
                 .then(kafkaProducer.sendUserDeleted(id))
                 .then();
     }
 
-    @PreAuthorize("hasRole('ROLE_USER') and #id == authentication.principal")
+    @PreAuthorize("hasRole('ROLE_USER')")
     public Mono<List<Long>> getUserFavoriteVacancyIds(long id) {
+        if (!getPrincipal().equals(id))
+            return Mono.error(new RequestException(HttpStatus.FORBIDDEN, "Можно получать только свое избранное"));
+
         return getUserById(id).map(User::getFavoriteVacancyIds);
     }
 
-    @PreAuthorize("hasRole('ROLE_USER') and #userId == authentication.principal")
+    @PreAuthorize("hasRole('ROLE_USER')")
     public Mono<Void> addToFavorites(long userId, long vacancyId) {
+        if (!getPrincipal().equals(userId))
+            return Mono.error(new RequestException(HttpStatus.FORBIDDEN, "Можно изменять только свое избранное"));
+
         return getUserById(userId)
                 .onErrorMap(err -> new RequestException(HttpStatus.NOT_FOUND, USER_NOT_FOUND_STR))
                 .flatMap(user -> clients.getVacancyById(vacancyId)
@@ -125,13 +138,20 @@ public class UserServiceImpl implements UserService {
                         .then());
     }
 
-    @PreAuthorize("hasRole('ROLE_USER') and #userId == authentication.principal")
+    @PreAuthorize("hasRole('ROLE_USER')")
     public Mono<Void> removeFromFavorites(long userId, long vacancyId) {
+        if (!getPrincipal().equals(userId))
+            return Mono.error(new RequestException(HttpStatus.FORBIDDEN, "Можно изменять только свое избранное"));
+
         return getUserById(userId)
                 .flatMap(user -> Mono.fromCallable(() -> {
                     user.getFavoriteVacancyIds().remove(vacancyId);
                     return userRepository.save(user);
                 }).subscribeOn(Schedulers.boundedElastic()))
                 .then();
+    }
+
+    private Long getPrincipal() {
+        return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 }

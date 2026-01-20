@@ -11,7 +11,7 @@ public interface VacancyService {
     Vacancy getVacancyById(long id);
     List<Vacancy> getVacanciesByOrganization(long orgId);
 
-    void deleteVacancy(long organizationId, long vacancyId);
-    Vacancy updateVacancy(long organizationId, long vacancyId, Vacancy vacancy);
-    Vacancy createVacancy(long organizationId, Vacancy vacancy);
+    void deleteVacancy(long vacancyId);
+    Vacancy updateVacancy(long vacancyId, Vacancy vacancy);
+    Vacancy createVacancy(Vacancy vacancy);
 }

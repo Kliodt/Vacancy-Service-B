@@ -1,8 +1,14 @@
 package com.vacancy.vacancy.kafka;
 
+import java.util.List;
+
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vacancy.vacancy.model.UserVacancyResponse;
+import com.vacancy.vacancy.model.Vacancy;
 import com.vacancy.vacancy.repository.UserVacancyResponseRepository;
 import com.vacancy.vacancy.repository.VacancyRepository;
 
@@ -16,13 +22,28 @@ public class KafkaConsumerService {
 
     private final UserVacancyResponseRepository responseRepository;
     private final VacancyRepository vacancyRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private Long extractLong(JsonNode node, String field) {
+        if (node == null)
+            throw new RuntimeException("Node is null");
+        JsonNode valueNode = node.get(field);
+        if (valueNode == null || valueNode.isNull())
+            throw new RuntimeException("Can't parse this field");
+        try {
+            return valueNode.isNumber() ? valueNode.asLong() : Long.parseLong(valueNode.asText());
+        } catch (Exception e) {
+            throw new RuntimeException("Can't parse this field");
+        }
+    }
 
     @KafkaListener(topics = "user.deleted", groupId = "vacancy-service")
     public void handleUserDeleted(String message) {
         try {
-            Long userId = Long.parseLong(message.trim());
-            log.info("Received user.deleted for userId={}", userId);
-            var list = responseRepository.findByUserId(userId);
+            log.info("Received user.deleted");
+            JsonNode json = objectMapper.readTree(message);
+            Long userId = extractLong(json, "userId");
+            List<UserVacancyResponse> list = responseRepository.findByUserId(userId);
             responseRepository.deleteAll(list);
             log.info("Deleted {} responses for user {}", list.size(), userId);
         } catch (Exception e) {
@@ -33,9 +54,10 @@ public class KafkaConsumerService {
     @KafkaListener(topics = "organization.deleted", groupId = "vacancy-service")
     public void handleOrganizationDeleted(String message) {
         try {
-            Long orgId = Long.parseLong(message.trim());
-            log.info("Received organization.deleted for orgId={}", orgId);
-            var vacancies = vacancyRepository.findByOrganizationId(orgId);
+            log.info("Received organization.deleted");
+            JsonNode json = objectMapper.readTree(message);
+            Long orgId = extractLong(json, "organizationId");
+            List<Vacancy> vacancies = vacancyRepository.findByOrganizationId(orgId);
             vacancyRepository.deleteAll(vacancies);
             log.info("Deleted {} vacancies for organization {}", vacancies.size(), orgId);
         } catch (Exception e) {

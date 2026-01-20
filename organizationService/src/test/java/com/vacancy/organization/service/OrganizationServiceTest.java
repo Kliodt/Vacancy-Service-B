@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,9 +15,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
@@ -24,8 +28,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.vacancy.organization.exceptions.RequestException;
 import com.vacancy.organization.kafka.KafkaProducerService;
@@ -37,9 +39,8 @@ import reactor.test.StepVerifier;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.cloud.config.enabled=false", "eureka.client.enabled=false" })
 @ActiveProfiles("test")
-@ExtendWith(SpringExtension.class) 
-@ContextConfiguration 
-@WithMockUser(roles = "USER")
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration
 class OrganizationServiceTest {
 
     @LocalServerPort
@@ -101,6 +102,16 @@ class OrganizationServiceTest {
         when(kafkaProducerService.sendOrganizationLoggedIn(anyLong())).thenReturn(reactor.core.publisher.Mono.empty());
     }
 
+    // void setContextPrincipal(long id, String role) {
+    // if (!role.startsWith("ROLE_"))
+    // role = "ROLE_" + role;
+    // var ctx = SecurityContextHolder.createEmptyContext();
+    // ctx.setAuthentication(
+    // new UsernamePasswordAuthenticationToken(Long.valueOf(id), null,
+    // List.of(new SimpleGrantedAuthority(role))));
+    // SecurityContextHolder.setContext(ctx);
+    // }
+
     @Test
     void getOrganizationById_found() {
         StepVerifier.create(organizationService.getOrganizationById(testOrganization.getId()))
@@ -119,6 +130,7 @@ class OrganizationServiceTest {
     }
 
     @Test
+    @WithMockUser(roles = "SUPERVISOR")
     void createOrganization_success() {
         Organization toCreate = new Organization();
         toCreate.setEmail("new@example.com");
@@ -130,6 +142,7 @@ class OrganizationServiceTest {
     }
 
     @Test
+    @WithMockUser(roles = "SUPERVISOR")
     void createOrganization_conflict() {
         Organization toCreate = new Organization();
         toCreate.setEmail(testOrganization.getEmail());
@@ -144,6 +157,7 @@ class OrganizationServiceTest {
     }
 
     @Test
+    @WithMockUser(roles = "ORGANIZATION")
     void updateOrganization_notFound() {
         Organization upd = new Organization();
         upd.setEmail("x@example.com");
@@ -158,6 +172,7 @@ class OrganizationServiceTest {
     }
 
     @Test
+    @WithMockUser(roles = "ORGANIZATION")
     void updateOrganization_conflictEmail() {
         Organization newOrg = new Organization();
         newOrg.setEmail("new@example.com");
@@ -169,7 +184,6 @@ class OrganizationServiceTest {
         Organization upd = new Organization();
         upd.setEmail(testOrganization.getEmail());
         upd.setNickname("Updated");
-        // no director field any more
 
         StepVerifier.create(organizationService.updateOrganization(newOrg.getId(), upd))
                 .expectErrorSatisfies(e -> {
@@ -191,6 +205,8 @@ class OrganizationServiceTest {
         saved.setEmail(upd.getEmail());
         saved.setNickname(upd.getNickname());
 
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(testOrganization.getId(), null, List.of(new SimpleGrantedAuthority("ROLE_ORGANIZATION"))));
+
         StepVerifier.create(organizationService.updateOrganization(testOrganization.getId(), upd))
                 .expectNextMatches(o -> o.getEmail().equals("updated@example.com") && o.getNickname().equals("Updated"))
                 .verifyComplete();
@@ -204,7 +220,8 @@ class OrganizationServiceTest {
         // no director field any more
 
         StepVerifier.create(organizationService.updateOrganization(testOrganization.getId(), upd))
-                .expectNextMatches(o -> o.getEmail().equals(testOrganization.getEmail()) && o.getNickname().equals("Updated"))
+                .expectNextMatches(
+                        o -> o.getEmail().equals(testOrganization.getEmail()) && o.getNickname().equals("Updated"))
                 .verifyComplete();
     }
 
@@ -212,7 +229,6 @@ class OrganizationServiceTest {
     void deleteOrganization_completes() {
         StepVerifier.create(organizationService.deleteOrganization(testOrganization.getId())).verifyComplete();
     }
-
 
     @Test
     void getAllOrganizations() {

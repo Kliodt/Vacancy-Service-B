@@ -41,7 +41,6 @@ public class KafkaProducerService {
                 out.put("organizationId", vac.getOrganizationId());
                 out.put("vacancyName", vac.getTitle());
             }
-            out.set("payload", objectMapper.valueToTree(resp));
             kafkaTemplate.send("vacancyResponse.created", out.toString());
         } catch (Exception e) {
             log.error("Failed to serialize vacancy response for created event", e);
@@ -59,7 +58,6 @@ public class KafkaProducerService {
                 out.put("organizationId", vac.getOrganizationId());
                 out.put("vacancyName", vac.getTitle());
             }
-            out.set("payload", objectMapper.valueToTree(resp));
             kafkaTemplate.send("vacancyResponse.updated", out.toString());
         } catch (Exception e) {
             log.error("Failed to serialize vacancy response for updated event", e);

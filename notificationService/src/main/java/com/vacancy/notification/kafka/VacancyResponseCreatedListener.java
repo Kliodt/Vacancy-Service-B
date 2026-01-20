@@ -21,14 +21,17 @@ public class VacancyResponseCreatedListener {
     @KafkaListener(topics = "vacancyResponse.created", groupId = "notification-service")
     public void listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
         JsonNode node = helper.parseMessage(message);
-        if (node == null) return;
+        if (node == null)
+            return;
 
         Long orgId = helper.extractLong(node, "organizationId");
-        if (orgId == null) return;
+        if (orgId == null)
+            return;
 
         WSClient client = new WSClient(orgId, true);
         String vacancyName = node.path("vacancyName").asText(null);
-        String readable = vacancyName != null ? "Новый отклик на вакансию '" + vacancyName + "'" : "Создан новый отклик на вакансию";
+        String readable = vacancyName != null ? "Новый отклик на вакансию '" + vacancyName + "'"
+                : "Создан новый отклик на вакансию";
         webSocketPushService.sendMessage(client, helper.buildNotification(topic, node, null, readable));
     }
 }

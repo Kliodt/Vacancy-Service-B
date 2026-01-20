@@ -21,10 +21,12 @@ public class OrganizationLoginListener {
     @KafkaListener(topics = "organization.login", groupId = "notification-service")
     public void listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
         JsonNode node = helper.parseMessage(message);
-        if (node == null) return;
+        if (node == null)
+            return;
 
         Long orgId = helper.extractLong(node, "organizationId");
-        if (orgId == null) return;
+        if (orgId == null)
+            return;
 
         WSClient client = new WSClient(orgId, true);
         String readable = "Организация вошла в систему";

@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
 
-@ReactiveFeignClient(name = "file-service", path = "/files")
+@ReactiveFeignClient(name = "file-service", path = "/file")
 public interface FileClient {
 
     @GetMapping("/{id}")

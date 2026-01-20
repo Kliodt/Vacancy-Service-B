@@ -1,13 +1,16 @@
 package com.vacancy.files.model;
 
+import java.io.InputStream;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.Transient;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -16,10 +19,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class FileObject {
 
-    public enum Status {
-        REQUESTED, SAVED, DELETED
-    }
-
     @Column(nullable = false, unique = true)
     @Id
     private String uuid;
@@ -27,19 +26,21 @@ public class FileObject {
     @Column(nullable = false)
     private String mime;
 
-    @Enumerated(EnumType.STRING)
-    private Status status;
-
     private OffsetDateTime createdAt;
 
     private Long ownerId;
+    
+    private String originalName;
 
-    public FileObject(String mime, Status status, Long ownerId) {
+    @Transient
+    Resource resource;
+
+    public FileObject(String mime, Long ownerId, String filename) {
         this.mime = mime;
-        this.status = status;
         this.ownerId = ownerId;
         this.createdAt = OffsetDateTime.now();
         this.uuid = UUID.randomUUID().toString();
+        this.originalName = filename;
     }
 
 }

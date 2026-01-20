@@ -1,70 +1,38 @@
 package com.vacancy.files.service;
 
-import java.net.URI;
-import java.time.Duration;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.vacancy.files.exceptions.RequestException;
 import com.vacancy.files.model.FileObject;
-import com.vacancy.files.model.dto.PresignedUrlResponse;
-import com.vacancy.files.model.dto.UploadRequest;
-import com.vacancy.files.model.dto.UploadResponse;
 import com.vacancy.files.repository.FileRepository;
 
-import lombok.RequiredArgsConstructor;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
-@RequiredArgsConstructor
 @PreAuthorize("isAuthenticated()")
-public class FileService implements InitializingBean {
+@Slf4j
+public class FileService {
 
     private final FileRepository fileRepository;
-    private S3Presigner presigner;
-    private S3Client s3Client;
+    private final Path storageDir;
 
-    @Value("${minio.endpoint}")
-    private String minioEndpoint;
-
-    @Value("${minio.access-key}")
-    private String minioAccessKey;
-
-    @Value("${minio.secret-key}")
-    private String minioSecretKey;
-
-    @Value("${minio.bucket-name}")
-    private String minioBucket;
-
-    @Value("${minio.presign-expiry-seconds:3600}")
-    private int presignExpirySeconds;
-
-    private static final List<String> ALLOWED_MIMES = List.of("image/jpeg", "image/png", "application/pdf");
-    private static final String DEFAULT_BUCKET = "files/";
-
-    @Override
-    public void afterPropertiesSet() {
-        this.presigner = S3Presigner.builder()
-                .endpointOverride(URI.create(minioEndpoint))
-                .region(Region.US_EAST_1)
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(minioAccessKey, minioSecretKey)))
-                .build();
+    public FileService(FileRepository fileRepository, @Value("${files.storage-dir}") String storageDir) {
+        this.storageDir = Paths.get(storageDir);
+        this.fileRepository = fileRepository;
     }
 
     private Long getCurrentPrincipalId() {
@@ -75,81 +43,56 @@ public class FileService implements InitializingBean {
         FileObject f = fileRepository.findById(id).orElse(null);
         if (f == null)
             throw new RequestException(HttpStatus.NOT_FOUND, "Файл не найден");
-        if (f.getStatus() != FileObject.Status.SAVED)
-            throw new RequestException(HttpStatus.NOT_FOUND, "Файл еще не загружен");
         return f;
     }
 
-    public PresignedUrlResponse generateDownloadUrl(String uuid) {
-        getFileById(uuid); // check that exists
-
-        GetObjectPresignRequest presignReq = GetObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofSeconds(presignExpirySeconds))
-                .getObjectRequest(builder -> builder
-                        .bucket(minioBucket)
-                        .key(DEFAULT_BUCKET + uuid) // bucket_name + uuid
-                )
-                .build();
-
-        PresignedGetObjectRequest presigned = presigner.presignGetObject(presignReq);
-
-        return new PresignedUrlResponse(presigned.url().toString(), presigned.httpRequest().method().name());
-    }
-
     @PreAuthorize("hasRole('ROLE_USER')")
-    public UploadResponse requestUpload(UploadRequest request) {
-
+    public FileObject uploadFile(MultipartFile file) {
         Long principalId = getCurrentPrincipalId();
 
-        // basic checks
-        if (!ALLOWED_MIMES.contains(request.getMime()))
-            throw new RequestException(HttpStatus.BAD_REQUEST, "Этот тип файлов запрещен");
+        String mime = file.getContentType();
+        FileObject fileObj = new FileObject(mime, principalId, file.getOriginalFilename());
 
-        // create DB record with status UPLOADING
-        FileObject file = fileRepository
-                .save(new FileObject(request.getMime(), FileObject.Status.REQUESTED, principalId));
-
-        // generate presigned upload url
-        PutObjectPresignRequest presignReq = PutObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofSeconds(presignExpirySeconds))
-                .putObjectRequest(
-                        builder -> builder
-                                .bucket(minioBucket)
-                                .key(DEFAULT_BUCKET + file.getUuid()) // bucket_name + file_name
-                                .contentType(request.getMime()))
-                .build();
-
-        PresignedPutObjectRequest presigned = presigner.presignPutObject(presignReq);
-
-        return new UploadResponse(file.getUuid(), presigned.url().toString(), presignExpirySeconds);
+        try {
+            Path target = storageDir.resolve(fileObj.getUuid());
+            try (InputStream is = file.getInputStream()) {
+                Files.copy(is, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+            return fileRepository.save(fileObj);
+        } catch (IOException e) {
+            throw new RequestException(HttpStatus.INTERNAL_SERVER_ERROR, "Не удалось сохранить файл");
+        }
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
     public void deleteFile(String uuid) {
-
         FileObject file = getFileById(uuid);
         Long principalId = getCurrentPrincipalId();
 
         if (!principalId.equals(file.getOwnerId()))
             throw new RequestException(HttpStatus.FORBIDDEN, "Можно удалять только свои файлы");
 
-        DeleteObjectRequest delReq = DeleteObjectRequest.builder()
-                .bucket(minioBucket)
-                .key(DEFAULT_BUCKET + uuid)
-                .build();
+        try {
+            fileRepository.delete(file);
+            Files.deleteIfExists(storageDir.resolve(uuid));
+        } catch (IOException e) {
+            log.warn("Failed to delete file from disk: {}", uuid, e);
+        }
+    }
 
-        s3Client.deleteObject(delReq);
-
-        file.setStatus(FileObject.Status.DELETED);
-        fileRepository.save(file);
+    public FileObject getFileWithData(String uuid) {
+        Path p = storageDir.resolve(uuid);
+        if (!Files.exists(p))
+            return null;
+        FileObject file = getFileById(uuid);
+        file.setResource(new FileSystemResource(p));
+        return file;
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
-    public List<FileObject> getAllMyFiles() {
+    public List<FileObject> listAllMyFiles() {
         Long principalId = getCurrentPrincipalId();
-        return fileRepository.findAllByOwnerId(principalId).stream()
-                .filter(file -> file.getStatus() == FileObject.Status.SAVED)
-                .toList();
+        return fileRepository.findAllByOwnerId(principalId);
     }
 
 }

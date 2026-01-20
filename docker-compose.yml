@@ -11,10 +11,10 @@ volumes:
   user_db_data:
   vacancy_db_data:
   file_db_data:
-  minio_data:
   kafka_data_1:
   kafka_data_2:
   kafka_data_3:
+  file_storage:
 
 
 services:
@@ -298,25 +298,6 @@ services:
       - kafka-broker-2
       - kafka-broker-3
 
-  minio:
-    image: minio/minio:latest
-    container_name: minio_container
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    networks:
-      - backend-net
-      - public-net
-    command: server /data --console-address ":9001"
-    expose:
-      - "9000"
-      - "9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio_data:/data
-
   file-service:
     image: file-service:latest
     container_name: file_service_container
@@ -331,17 +312,15 @@ services:
       CONFIG_SERVER: ${CONFIG_SERVER}
       EUREKA_SERVER: ${EUREKA_SERVER}
 
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
+      STORAGE_DIR: /data/files
 
     networks:
       - backend-net
     depends_on:
-      - minio
       - file-db
+    volumes:
+      - file_storage:/data/files
 
   file-db:
     image: postgres:17

@@ -19,7 +19,10 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 
-@SpringBootApplication
+/**
+ * Application Configuration & Bootstrap
+ */
+@SpringBootApplication(scanBasePackages = {"com.vacancy"})
 @EnableDiscoveryClient
 @EnableFeignClients
 @OpenAPIDefinition
@@ -48,7 +51,6 @@ public class VacancyServiceApplication {
     public ModelMapper modelMapper() {
         ModelMapper modelMapper = new ModelMapper();
 
-        // Основные настройки для предотвращения двойного маппирования
         modelMapper.getConfiguration()
                 .setMatchingStrategy(MatchingStrategies.STRICT)
                 .setAmbiguityIgnored(true)
@@ -56,5 +58,4 @@ public class VacancyServiceApplication {
 
         return modelMapper;
     }
-
 }

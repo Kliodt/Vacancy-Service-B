@@ -5,6 +5,7 @@ import java.util.List;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -54,7 +55,8 @@ public class UserController {
 
     @Operation(summary = "Создать пользователя (только supervisor)")
     @PostMapping
-    public Mono<ResponseEntity<UserResponseDto>> createUser(@Valid @RequestBody UserRequestCreateDto user) {
+    public Mono<ResponseEntity<UserResponseDto>> createUser(
+            @Valid @RequestBody UserRequestCreateDto user) {
         return userService.createUser(modelMapper.map(user, User.class))
                 .map(usr -> modelMapper.map(usr, UserResponseDto.class))
                 .map(saved -> ResponseEntity.status(HttpStatus.CREATED).body(saved));
@@ -62,24 +64,30 @@ public class UserController {
 
     @Operation(summary = "Обновить пользователя по id")
     @PutMapping("/{userId}")
-    public Mono<ResponseEntity<UserResponseDto>> updateUser(@PathVariable Long userId,
-            @Valid @RequestBody UserRequestUpdateDto user) {
-        return userService.updateUser(userId, modelMapper.map(user, User.class))
+    public Mono<ResponseEntity<UserResponseDto>> updateUser(
+            @PathVariable Long userId,
+            @Valid @RequestBody UserRequestUpdateDto user,
+            Authentication authentication) {
+        return userService.updateUser(userId, modelMapper.map(user, User.class), authentication)
                 .map(usr -> modelMapper.map(usr, UserResponseDto.class))
                 .map(ResponseEntity::ok);
     }
 
     @Operation(summary = "Удалить пользователя по id")
     @DeleteMapping("/{userId}")
-    public Mono<ResponseEntity<Void>> deleteUser(@PathVariable Long userId) {
-        return userService.deleteUser(userId)
+    public Mono<ResponseEntity<Void>> deleteUser(
+            @PathVariable Long userId,
+            Authentication authentication) {
+        return userService.deleteUser(userId, authentication)
                 .thenReturn(ResponseEntity.noContent().build());
     }
 
     @Operation(summary = "Получить избранные вакансии пользователя")
     @GetMapping("/{userId}/favorites")
-    public Mono<ResponseEntity<List<Long>>> getUserFavorites(@PathVariable Long userId) {
-        return userService.getUserFavoriteVacancyIds(userId)
+    public Mono<ResponseEntity<List<Long>>> getUserFavorites(
+            @PathVariable Long userId,
+            Authentication authentication) {
+        return userService.getUserFavoriteVacancyIds(userId, authentication)
                 .map(ResponseEntity::ok);
     }
 
@@ -87,15 +95,19 @@ public class UserController {
     @PutMapping("/{userId}/favorites")
     public Mono<ResponseEntity<Void>> addToFavorites(
             @PathVariable Long userId,
-            @RequestParam Long vacancyId) {
-        return userService.addToFavorites(userId, vacancyId)
+            @RequestParam Long vacancyId,
+            Authentication authentication) {
+        return userService.addToFavorites(userId, vacancyId, authentication)
                 .thenReturn(ResponseEntity.noContent().build());
     }
 
     @Operation(summary = "Убрать вакансию из избранного")
     @DeleteMapping("/{userId}/favorites")
-    public Mono<ResponseEntity<Void>> removeFromFavorites(@PathVariable Long userId, @RequestParam Long vacancyId) {
-        return userService.removeFromFavorites(userId, vacancyId)
+    public Mono<ResponseEntity<Void>> removeFromFavorites(
+            @PathVariable Long userId,
+            @RequestParam Long vacancyId,
+            Authentication authentication) {
+        return userService.removeFromFavorites(userId, vacancyId, authentication)
                 .thenReturn(ResponseEntity.noContent().build());
     }
 }

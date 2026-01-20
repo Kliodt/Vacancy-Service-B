@@ -2,6 +2,7 @@ package com.vacancy.organization.service;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -54,8 +55,8 @@ public class OrganizationServiceImpl implements OrganizationService {
     }
 
     @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
-    public Mono<Organization> updateOrganization(long id, Organization organization) {
-        if (!getPrincipal().equals(id)) 
+    public Mono<Organization> updateOrganization(long id, Organization organization, Authentication auth) {
+        if (!auth.getPrincipal().equals(id)) 
             return Mono.error(new RequestException(HttpStatus.FORBIDDEN, ORG_ACCESS_FORBIDDEN));
 
         return organizationRepository.findById(id)
@@ -73,16 +74,12 @@ public class OrganizationServiceImpl implements OrganizationService {
     }
 
     @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
-    public Mono<Void> deleteOrganization(long id) {
-        if (!getPrincipal().equals(id)) 
+    public Mono<Void> deleteOrganization(long id, Authentication auth) {
+        if (!auth.getPrincipal().equals(id)) 
             return Mono.error(new RequestException(HttpStatus.FORBIDDEN, ORG_ACCESS_FORBIDDEN));
 
         return Mono.fromRunnable(() -> organizationRepository.deleteById(id))
                 .then(kafkaProducer.sendOrganizationDeleted(id))
                 .then();
-    }
-
-    private Long getPrincipal() {
-        return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 }

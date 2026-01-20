@@ -7,16 +7,16 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import com.vacancy.vacancy.exceptions.RequestException;
+import com.vacancy.vacancy.kafka.KafkaProducerService;
 import com.vacancy.vacancy.model.Vacancy;
 import com.vacancy.vacancy.repository.VacancyRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.vacancy.vacancy.kafka.KafkaProducerService;
 
 @Service
 @RequiredArgsConstructor
@@ -44,10 +44,10 @@ public class VacancyServiceImpl implements VacancyService {
     }
 
     @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
-    public void deleteVacancy(long vacancyId) {
+    public void deleteVacancy(long vacancyId, Authentication auth) {
         Vacancy vac = getVacancyById(vacancyId);
 
-        if (!vac.getOrganizationId().equals(getPrincipal()))
+        if (!vac.getOrganizationId().equals(auth.getPrincipal()))
             throw new RequestException(HttpStatus.FORBIDDEN, "Нельзя удалять вакансии другой организации");
 
         vacancyRepository.delete(vac);
@@ -55,10 +55,10 @@ public class VacancyServiceImpl implements VacancyService {
     }
 
     @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
-    public Vacancy updateVacancy(long vacancyId, Vacancy vacancy) {
+    public Vacancy updateVacancy(long vacancyId, Vacancy vacancy, Authentication auth) {
         Vacancy oldVac = getVacancyById(vacancyId);
 
-        if (!oldVac.getOrganizationId().equals(getPrincipal()))
+        if (!oldVac.getOrganizationId().equals(auth.getPrincipal()))
             throw new RequestException(HttpStatus.FORBIDDEN, "Нельзя изменять вакансии другой организации");
 
         oldVac.updateWithOther(vacancy);
@@ -67,12 +67,8 @@ public class VacancyServiceImpl implements VacancyService {
     }
 
     @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
-    public Vacancy createVacancy(Vacancy vacancy) {
-        vacancy.setOrganizationId(getPrincipal());
+    public Vacancy createVacancy(Vacancy vacancy, Authentication auth) {
+        vacancy.setOrganizationId((Long) auth.getPrincipal());
         return vacancyRepository.save(vacancy);
-    }
-
-    private Long getPrincipal() {
-        return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 }

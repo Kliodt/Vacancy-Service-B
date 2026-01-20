@@ -3,6 +3,7 @@ package com.vacancy.vacancy.controller;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,35 +28,41 @@ public class VacancyResponseController {
 
     @Operation(summary = "Откликнуться на вакансию")
     @PostMapping("/{vacancyId}/responses")
-    public ResponseEntity<UserVacancyResponse> respondToVacancy(@PathVariable Long vacancyId) {
-        return ResponseEntity.ok(responseService.respondToVacancy(vacancyId));
+    public ResponseEntity<UserVacancyResponse> respondToVacancy(
+            @PathVariable Long vacancyId,
+            Authentication auth) {
+        return ResponseEntity.ok(responseService.respondToVacancy(vacancyId, auth));
     }
 
     @Operation(summary = "Удалить отклик")
     @DeleteMapping("/{vacancyId}/responses")
-    public ResponseEntity<Void> removeResponseFromVacancy(@PathVariable Long vacancyId) {
-        responseService.removeResponseFromVacancy(vacancyId);
+    public ResponseEntity<Void> removeResponseFromVacancy(
+            @PathVariable Long vacancyId,
+            Authentication auth) {
+        responseService.removeResponseFromVacancy(vacancyId, auth);
         return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "Получить все отклики пользователя (для пользователей)")
     @GetMapping("/responses")
-    public ResponseEntity<List<UserVacancyResponse>> getAllVacancyResponsesByUser() {
-        return ResponseEntity.ok(responseService.getUserResponses());
+    public ResponseEntity<List<UserVacancyResponse>> getAllVacancyResponsesByUser(Authentication auth) {
+        return ResponseEntity.ok(responseService.getUserResponses(auth));
     }
 
     @Operation(summary = "Получить все отклики на вакансию (для организаций)")
     @GetMapping("/{vacancyId}/responses")
-    public ResponseEntity<List<UserVacancyResponse>> getAllVacancyResponsesByVacancy(@PathVariable Long vacancyId) {
-        return ResponseEntity.ok(responseService.getVacancyResponses(vacancyId));
+    public ResponseEntity<List<UserVacancyResponse>> getAllVacancyResponsesByVacancy(@PathVariable Long vacancyId,
+            Authentication auth) {
+        return ResponseEntity.ok(responseService.getVacancyResponses(vacancyId, auth));
     }
 
     @Operation(summary = "Изменить статус отклика на вакансию")
     @PutMapping("/responses/{responseId}")
     public ResponseEntity<UserVacancyResponse> updateVacancyResponseStatus(
             @PathVariable Long responseId,
-            @RequestParam("newStatus") UserVacancyResponse.Status status) {
-        return ResponseEntity.ok(responseService.changeResponseStatus(responseId, status));
+            @RequestParam("newStatus") UserVacancyResponse.Status status,
+            Authentication auth) {
+        return ResponseEntity.ok(responseService.changeResponseStatus(responseId, status, auth));
     }
 
 }

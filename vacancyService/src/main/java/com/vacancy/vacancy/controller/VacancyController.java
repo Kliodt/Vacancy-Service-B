@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -68,9 +69,11 @@ public class VacancyController {
 
     @Operation(summary = "Создать вакансию")
     @PostMapping
-    public ResponseEntity<VacancyDtoOut> createVacancy(@Valid @RequestBody VacancyDtoIn vacancy) {
+    public ResponseEntity<VacancyDtoOut> createVacancy(
+            @Valid @RequestBody VacancyDtoIn vacancy,
+            Authentication auth) {
         Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
-        Vacancy created = vacancyService.createVacancy(vac);
+        Vacancy created = vacancyService.createVacancy(vac, auth);
         return ResponseEntity.status(HttpStatus.CREATED).body(modelMapper.map(created, VacancyDtoOut.class));
     }
 
@@ -78,16 +81,17 @@ public class VacancyController {
     @PutMapping(value = "/{vacancyId}")
     public ResponseEntity<VacancyDtoOut> updateVacancy(
             @PathVariable Long vacancyId,
-            @Valid @RequestBody VacancyDtoIn vacancy) {
+            @Valid @RequestBody VacancyDtoIn vacancy,
+            Authentication auth) {
         Vacancy vac = modelMapper.map(vacancy, Vacancy.class);
-        Vacancy updated = vacancyService.updateVacancy(vacancyId, vac);
+        Vacancy updated = vacancyService.updateVacancy(vacancyId, vac, auth);
         return ResponseEntity.ok(modelMapper.map(updated, VacancyDtoOut.class));
     }
 
     @Operation(summary = "Удалить вакансию")
     @DeleteMapping("/{vacancyId}")
-    public ResponseEntity<Void> deleteVacancy(@PathVariable Long vacancyId) {
-        vacancyService.deleteVacancy(vacancyId);
+    public ResponseEntity<Void> deleteVacancy(@PathVariable Long vacancyId, Authentication auth) {
+        vacancyService.deleteVacancy(vacancyId, auth);
         return ResponseEntity.noContent().build();
     }
 

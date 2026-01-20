@@ -13,7 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,10 +38,6 @@ public class FileServiceImpl implements FileService {
         this.fileRepository = fileRepository;
     }
 
-    private Long getCurrentPrincipalId() {
-        return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    }
-
     public FileObject getFileById(String id) {
         Optional<FileObject> f = fileRepository.findById(id);
         if (f.isEmpty())
@@ -50,15 +46,14 @@ public class FileServiceImpl implements FileService {
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
-    public FileObject uploadFile(MultipartFile file) {
-        Long principalId = getCurrentPrincipalId();
+    public FileObject uploadFile(MultipartFile file, Authentication auth) {
 
         String mime = file.getContentType();
 
-        if (!ALLOWED_MIMES.contains(mime)) 
+        if (!ALLOWED_MIMES.contains(mime))
             throw new RequestException(HttpStatus.BAD_REQUEST, "Данный тип файла (" + mime + ") загружать нельзя");
 
-        FileObject fileObj = new FileObject(mime, principalId, file.getOriginalFilename());
+        FileObject fileObj = new FileObject(mime, (Long) auth.getPrincipal(), file.getOriginalFilename());
 
         try {
             Path target = storageDir.resolve(fileObj.getUuid());
@@ -72,11 +67,10 @@ public class FileServiceImpl implements FileService {
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
-    public void deleteFile(String uuid) {
+    public void deleteFile(String uuid, Authentication auth) {
         FileObject file = getFileById(uuid);
-        Long principalId = getCurrentPrincipalId();
 
-        if (!principalId.equals(file.getOwnerId()))
+        if (!auth.getPrincipal().equals(file.getOwnerId()))
             throw new RequestException(HttpStatus.FORBIDDEN, "Можно удалять только свои файлы");
 
         try {
@@ -110,9 +104,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
-    public List<FileObject> listAllMyFiles() {
-        Long principalId = getCurrentPrincipalId();
-        return fileRepository.findAllByOwnerId(principalId);
+    public List<FileObject> listAllMyFiles(Authentication auth) {
+        return fileRepository.findAllByOwnerId((Long) auth.getPrincipal());
     }
-
 }

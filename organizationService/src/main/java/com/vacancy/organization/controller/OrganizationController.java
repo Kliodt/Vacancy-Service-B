@@ -3,6 +3,7 @@ package com.vacancy.organization.controller;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -62,18 +63,22 @@ public class OrganizationController {
 
     @Operation(summary = "Обновить организацию")
     @PutMapping("/{id}")
-    public Mono<ResponseEntity<OrganizationResponseDto>> updateOrganization(@PathVariable Long id,
-            @RequestBody @Valid OrganizationRequestUpdateDto organization) {
+    public Mono<ResponseEntity<OrganizationResponseDto>> updateOrganization(
+            @PathVariable Long id,
+            @RequestBody @Valid OrganizationRequestUpdateDto organization,
+            Authentication auth) {
         return organizationService
-                .updateOrganization(id, modelMapper.map(organization, Organization.class))
+                .updateOrganization(id, modelMapper.map(organization, Organization.class), auth)
                 .map(org -> modelMapper.map(org, OrganizationResponseDto.class))
                 .map(ResponseEntity::ok);
     }
 
     @Operation(summary = "Удалить организацию")
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Void>> deleteOrganization(@PathVariable Long id) {
-        return organizationService.deleteOrganization(id)
+    public Mono<ResponseEntity<Void>> deleteOrganization(
+            @PathVariable Long id,
+            Authentication auth) {
+        return organizationService.deleteOrganization(id, auth)
                 .thenReturn(ResponseEntity.noContent().build());
     }
 

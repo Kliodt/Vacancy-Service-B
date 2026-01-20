@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -64,8 +64,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
-    public Mono<User> updateUser(long id, User user) {
-        if (!getPrincipal().equals(id))
+    public Mono<User> updateUser(long id, User user, Authentication auth) {
+        if (!auth.getPrincipal().equals(id))
             return Mono.error(new RequestException(HttpStatus.FORBIDDEN, "Можно обновлять только свои данные"));
 
         return Mono.fromCallable(() -> {
@@ -101,8 +101,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
-    public Mono<Void> deleteUser(long id) {
-        if (!getPrincipal().equals(id))
+    public Mono<Void> deleteUser(long id, Authentication auth) {
+        if (!auth.getPrincipal().equals(id))
             return Mono.error(new RequestException(HttpStatus.FORBIDDEN, "Можно удалять только себя"));
 
         return Mono.fromRunnable(() -> userRepository.deleteById(id))
@@ -112,16 +112,16 @@ public class UserServiceImpl implements UserService {
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
-    public Mono<List<Long>> getUserFavoriteVacancyIds(long id) {
-        if (!getPrincipal().equals(id))
+    public Mono<List<Long>> getUserFavoriteVacancyIds(long id, Authentication auth) {
+        if (!auth.getPrincipal().equals(id))
             return Mono.error(new RequestException(HttpStatus.FORBIDDEN, "Можно получать только свое избранное"));
 
         return getUserById(id).map(User::getFavoriteVacancyIds);
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
-    public Mono<Void> addToFavorites(long userId, long vacancyId) {
-        if (!getPrincipal().equals(userId))
+    public Mono<Void> addToFavorites(long userId, long vacancyId, Authentication auth) {
+        if (!auth.getPrincipal().equals(userId))
             return Mono.error(new RequestException(HttpStatus.FORBIDDEN, "Можно изменять только свое избранное"));
 
         return getUserById(userId)
@@ -139,8 +139,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
-    public Mono<Void> removeFromFavorites(long userId, long vacancyId) {
-        if (!getPrincipal().equals(userId))
+    public Mono<Void> removeFromFavorites(long userId, long vacancyId, Authentication auth) {
+        if (!auth.getPrincipal().equals(userId))
             return Mono.error(new RequestException(HttpStatus.FORBIDDEN, "Можно изменять только свое избранное"));
 
         return getUserById(userId)
@@ -149,9 +149,5 @@ public class UserServiceImpl implements UserService {
                     return userRepository.save(user);
                 }).subscribeOn(Schedulers.boundedElastic()))
                 .then();
-    }
-
-    private Long getPrincipal() {
-        return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 }

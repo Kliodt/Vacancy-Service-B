@@ -7,6 +7,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,8 +33,10 @@ public class FileController {
 
     @Operation(summary = "Загрузить файл")
     @PostMapping(value = "/upload", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
-    public ResponseEntity<FileInfoDto> requestUpload(@RequestParam("file") MultipartFile file) {
-        FileObject fo = fileService.uploadFile(file);
+    public ResponseEntity<FileInfoDto> requestUpload(
+            @RequestParam("file") MultipartFile file,
+            Authentication auth) {
+        FileObject fo = fileService.uploadFile(file, auth);
         return ResponseEntity.ok(modelMapper.map(fo, FileInfoDto.class));
     }
 
@@ -45,14 +48,14 @@ public class FileController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + fileObject.getOriginalName() + "\"")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentType(new MediaType("application", "octet-stream"))
                 .body(fileObject.getResource());
     }
 
     @Operation(summary = "Удалить файл")
     @DeleteMapping("/{uuid}")
-    public ResponseEntity<Void> deleteFile(@PathVariable String uuid) {
-        fileService.deleteFile(uuid);
+    public ResponseEntity<Void> deleteFile(@PathVariable String uuid, Authentication auth) {
+        fileService.deleteFile(uuid, auth);
         return ResponseEntity.ok().build();
     }
 
@@ -65,8 +68,8 @@ public class FileController {
 
     @Operation(summary = "Получить все файлы текущего пользователя")
     @GetMapping("/list")
-    public ResponseEntity<List<FileInfoDto>> listUserFiles() {
-        List<FileInfoDto> resp = fileService.listAllMyFiles().stream()
+    public ResponseEntity<List<FileInfoDto>> listUserFiles(Authentication auth) {
+        List<FileInfoDto> resp = fileService.listAllMyFiles(auth).stream()
                 .map(fo -> modelMapper.map(fo, FileInfoDto.class))
                 .toList();
         return ResponseEntity.ok(resp);

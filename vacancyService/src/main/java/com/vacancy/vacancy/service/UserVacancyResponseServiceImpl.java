@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,25 +33,25 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
 
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('ROLE_USER')")
-    public List<UserVacancyResponse> getUserResponses() {
-        return responseRepository.findByUserId(getPrincipal());
+    public List<UserVacancyResponse> getUserResponses(Authentication auth) {
+        return responseRepository.findByUserId((Long) auth.getPrincipal());
     }
 
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
-    public List<UserVacancyResponse> getVacancyResponses(long vacancyId) {
+    public List<UserVacancyResponse> getVacancyResponses(long vacancyId, Authentication auth) {
         Vacancy vac = getVacancyById(vacancyId);
 
-        if (!vac.getOrganizationId().equals(getPrincipal()))
+        if (!vac.getOrganizationId().equals(auth.getPrincipal()))
             throw new RequestException(HttpStatus.FORBIDDEN, "Вакансия не принадлежит данной организации");
 
         return responseRepository.findByVacancyId(vacancyId);
     }
 
     @PreAuthorize("hasRole('ROLE_USER')")
-    public UserVacancyResponse respondToVacancy(long vacancyId) {
+    public UserVacancyResponse respondToVacancy(long vacancyId, Authentication auth) {
         getVacancyById(vacancyId);
-        Long userId = getPrincipal();
+        Long userId = (Long) auth.getPrincipal();
         List<UserVacancyResponse> existing = responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
 
         if (!existing.isEmpty())
@@ -64,19 +64,20 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
 
     @Transactional
     @PreAuthorize("hasRole('ROLE_USER')")
-    public void removeResponseFromVacancy(long vacancyId) {
-        responseRepository.deleteByUserIdAndVacancyId(getPrincipal(), vacancyId);
+    public void removeResponseFromVacancy(long vacancyId, Authentication auth) {
+        responseRepository.deleteByUserIdAndVacancyId((Long) auth.getPrincipal(), vacancyId);
     }
 
     @Transactional
     @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
-    public UserVacancyResponse changeResponseStatus(long responseId, UserVacancyResponse.Status status) {
+    public UserVacancyResponse changeResponseStatus(long responseId, UserVacancyResponse.Status status,
+            Authentication auth) {
         UserVacancyResponse resp = responseRepository.findById(responseId).orElseThrow(
                 () -> new RequestException(HttpStatus.NOT_FOUND, "Отклик на вакансию не найден"));
 
         Vacancy vac = getVacancyById(resp.getVacancyId());
 
-        if (!vac.getOrganizationId().equals(getPrincipal()))
+        if (!vac.getOrganizationId().equals(auth.getPrincipal()))
             throw new RequestException(HttpStatus.FORBIDDEN, "Вакансия не принадлежит данной организации");
 
         resp.setStatus(status);
@@ -85,9 +86,5 @@ public class UserVacancyResponseServiceImpl implements UserVacancyResponseServic
         kafkaProducer.sendVacancyResponseUpdated(resp);
 
         return resp;
-    }
-
-    private Long getPrincipal() {
-        return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 }

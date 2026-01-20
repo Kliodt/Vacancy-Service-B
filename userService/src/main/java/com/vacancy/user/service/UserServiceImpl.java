@@ -88,6 +88,7 @@ public class UserServiceImpl implements UserService {
                     // Otherwise, check file, then save
                     return clients.getFileById(newCvFile)
                             .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, "CV файл не найден")))
+                            .onErrorMap(idk -> new RequestException(HttpStatus.NOT_FOUND, "CV файл не найден"))
                             .then(Mono.fromCallable(() -> {
                                 existingUser.updateWithOther(user);
                                 return userRepository.save(existingUser);

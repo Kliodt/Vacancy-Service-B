@@ -11,7 +11,6 @@ public interface FileService {
     public FileObject getFileById(String id);
     public FileObject uploadFile(MultipartFile file, Authentication auth);
     public void deleteFile(String uuid, Authentication auth);
-    public void deleteAllByUser(Long userId);
     public FileObject getFileWithData(String uuid);
     public List<FileObject> listAllMyFiles(Authentication auth);
 }

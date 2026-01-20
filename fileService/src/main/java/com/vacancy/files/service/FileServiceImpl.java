@@ -81,19 +81,6 @@ public class FileServiceImpl implements FileService {
         }
     }
 
-    public void deleteAllByUser(Long userId) {
-        List<FileObject> files = fileRepository.findAllByOwnerId(userId);
-
-        for (FileObject file : files) {
-            try {
-                fileRepository.delete(file);
-                Files.deleteIfExists(storageDir.resolve(file.getUuid()));
-            } catch (IOException e) {
-                log.warn("Failed to delete file: {}", file.getUuid(), e);
-            }
-        }
-    }
-
     public FileObject getFileWithData(String uuid) {
         Path p = storageDir.resolve(uuid);
         FileObject file = getFileById(uuid);

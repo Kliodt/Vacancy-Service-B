@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -75,6 +76,11 @@ public class UserServiceApplication {
         Map<String, Object> props = kafkaProperties.buildProducerProperties();
         SenderOptions<String, String> options = SenderOptions.create(props);
         return KafkaSender.create(options);
+    }
+
+    @Bean
+    public ModelMapper modelMapper() {
+        return new ModelMapper();
     }
 
 }

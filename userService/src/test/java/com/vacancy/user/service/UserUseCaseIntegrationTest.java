@@ -275,6 +275,34 @@ class UserUseCaseIntegrationTest {
     }
 
     @Test
+    void testFavorites_AddAndRemove() {
+        when(vacancyServicePort.getVacancyById(42)).thenReturn(Mono.just(new Object()));
+
+        // Arrange - favorites are initially empty
+        StepVerifier.create(getUserFavoritesUseCase.execute(testUser.getId(), userOwner))
+                .expectNextMatches(Collection::isEmpty)
+                .verifyComplete();
+
+        // Act - add to favorites
+        StepVerifier.create(addToFavoritesUseCase.execute(testUser.getId(), 42L, userOwner))
+                .verifyComplete();
+
+        // Assert - verify added
+        User updated = userRepository.findById(testUser.getId()).orElse(null);
+        assertNotNull(updated);
+        assert updated.getFavoriteVacancyIds().contains(42L);
+
+        // Act - remove from favorites
+        StepVerifier.create(removeFromFavoritesUseCase.execute(testUser.getId(), 42L, userOwner))
+                .verifyComplete();
+
+        // Assert - verify removed
+        User final_user = userRepository.findById(testUser.getId()).orElse(null);
+        assertNotNull(final_user);
+        assert !final_user.getFavoriteVacancyIds().contains(42L);
+    }
+
+    @Test
     void testAddToFavorites_AccessDenied() {
         // Act & Assert
         StepVerifier.create(addToFavoritesUseCase.execute(testUser.getId(), 42L, otherUser))

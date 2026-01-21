@@ -27,8 +27,5 @@ public class UserRequestCreateDto {
     @NotBlank(message = "Password не может быть пустым")
     private String password;
 
-    @Size(max = 512, message = "CV Link не может превышать 512 символов")
-    private String cvLink;
-
     private Set<Role> roles;
 }

@@ -6,6 +6,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import com.vacancy.user.application.exception.EntityNotFoundException;
 import com.vacancy.user.domain.model.User;
 import com.vacancy.user.domain.port.UserPersistencePort;
 import com.vacancy.user.infrastructure.persistence.repository.JpaUserRepository;
@@ -57,18 +58,22 @@ public class UserPersistenceAdapter implements UserPersistencePort {
 
     @Override
     public Mono<List<Long>> getFavoriteVacancyIds(Long userId) {
-        return Mono.fromCallable(() -> jpaUserRepository.getFavoriteVacancyIds(userId))
-                .subscribeOn(Schedulers.boundedElastic());
+        return Mono
+                .fromCallable(() -> jpaUserRepository.findById(userId)
+                        .orElseThrow(() -> new EntityNotFoundException("Пользователь не найден")))
+                .subscribeOn(Schedulers.boundedElastic())
+                .map(User::getFavoriteVacancyIds);
     }
 
     @Override
     public Mono<Void> addToFavorites(Long userId, Long vacancyId) {
         return Mono.fromRunnable(() -> {
-            User user = jpaUserRepository.findById(userId).orElse(null);
-            if (user != null && !user.getFavoriteVacancyIds().contains(vacancyId)) {
+            User user = jpaUserRepository.findById(userId)
+                    .orElseThrow(() -> new EntityNotFoundException("Пользователь не найден"));
+            if (!user.getFavoriteVacancyIds().contains(vacancyId)) {
                 user.getFavoriteVacancyIds().add(vacancyId);
-                jpaUserRepository.save(user);
             }
+            jpaUserRepository.save(user);
         })
                 .subscribeOn(Schedulers.boundedElastic())
                 .then();
@@ -77,11 +82,10 @@ public class UserPersistenceAdapter implements UserPersistencePort {
     @Override
     public Mono<Void> removeFromFavorites(Long userId, Long vacancyId) {
         return Mono.fromRunnable(() -> {
-            User user = jpaUserRepository.findById(userId).orElse(null);
-            if (user != null) {
-                user.getFavoriteVacancyIds().remove(vacancyId);
-                jpaUserRepository.save(user);
-            }
+            User user = jpaUserRepository.findById(userId)
+                    .orElseThrow(() -> new EntityNotFoundException("Пользователь не найден"));
+            user.getFavoriteVacancyIds().remove(vacancyId);
+            jpaUserRepository.save(user);
         })
                 .subscribeOn(Schedulers.boundedElastic())
                 .then();

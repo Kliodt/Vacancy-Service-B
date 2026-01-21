@@ -3,8 +3,8 @@ package com.vacancy.organization.application.usecase;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import com.vacancy.organization.application.exception.AccessDeniedException;
 import com.vacancy.organization.application.exception.ConflictException;
-import com.vacancy.organization.application.exception.ForbiddenRoleException;
 import com.vacancy.organization.domain.model.CurrentUser;
 import com.vacancy.organization.domain.model.Organization;
 import com.vacancy.organization.domain.model.Role;
@@ -25,7 +25,7 @@ public class CreateOrganizationUseCase {
 
     public Mono<Organization> execute(Organization organization, CurrentUser currentUser) {
         if (!currentUser.hasRole(Role.SUPERVISOR)) {
-            return Mono.error(new ForbiddenRoleException("Только SUPERVISOR может создавать организации"));
+            return Mono.error(new AccessDeniedException("Только SUPERVISOR может создавать организации"));
         }
 
         // Проверка на дублирование email

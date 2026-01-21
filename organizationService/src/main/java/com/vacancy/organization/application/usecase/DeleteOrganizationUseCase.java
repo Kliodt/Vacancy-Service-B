@@ -3,7 +3,6 @@ package com.vacancy.organization.application.usecase;
 import org.springframework.stereotype.Component;
 
 import com.vacancy.organization.application.exception.AccessDeniedException;
-import com.vacancy.organization.application.exception.ForbiddenRoleException;
 import com.vacancy.organization.domain.model.CurrentUser;
 import com.vacancy.organization.domain.model.Role;
 import com.vacancy.organization.domain.port.OrganizationEventPort;
@@ -25,7 +24,7 @@ public class DeleteOrganizationUseCase {
 
     public Mono<Void> execute(long organizationId, CurrentUser currentUser) {
         if (!currentUser.hasRole(Role.ORGANIZATION)) {
-            return Mono.error(new ForbiddenRoleException("Только ORGANIZATION может удалять свой аккаунт"));
+            return Mono.error(new AccessDeniedException("Только ORGANIZATION может удалять свой аккаунт"));
         }
 
         return getOrganizationByIdUseCase.execute(organizationId)

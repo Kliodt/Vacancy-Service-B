@@ -1,21 +1,20 @@
 package com.vacancy.organization.domain.model;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
-/**
- * Domain модель Organization
- * Содержит только бизнес-логику, без Spring/Security зависимостей
- */
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Table("organization")
+@Slf4j
 public class Organization {
 
+    @Id
     private Long id;
 
     @NotBlank(message = "Nickname не может быть пустым")
@@ -34,4 +33,5 @@ public class Organization {
         this.setNickname(other.getNickname());
         this.setEmail(other.getEmail());
     }
+
 }

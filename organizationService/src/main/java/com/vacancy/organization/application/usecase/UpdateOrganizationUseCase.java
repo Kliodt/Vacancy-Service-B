@@ -4,7 +4,6 @@ import org.springframework.stereotype.Component;
 
 import com.vacancy.organization.application.exception.AccessDeniedException;
 import com.vacancy.organization.application.exception.ConflictException;
-import com.vacancy.organization.application.exception.ForbiddenRoleException;
 import com.vacancy.organization.domain.model.CurrentUser;
 import com.vacancy.organization.domain.model.Organization;
 import com.vacancy.organization.domain.model.Role;
@@ -26,7 +25,7 @@ public class UpdateOrganizationUseCase {
     public Mono<Organization> execute(long organizationId, Organization updated, CurrentUser currentUser) {
         // Проверка прав: только ORGANIZATION может изменять
         if (!currentUser.hasRole(Role.ORGANIZATION)) {
-            return Mono.error(new ForbiddenRoleException("Только ORGANIZATION может изменять свои данные"));
+            return Mono.error(new AccessDeniedException("Только ORGANIZATION может изменять свои данные"));
         }
 
         return getOrganizationByIdUseCase.execute(organizationId)

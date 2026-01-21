@@ -1,5 +1,6 @@
 package com.vacancy.organization.application.usecase;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import com.vacancy.organization.application.exception.EntityNotFoundException;
@@ -18,13 +19,14 @@ import reactor.core.publisher.Mono;
 public class LoginOrganizationUseCase {
     private final OrganizationPersistencePort organizationPersistencePort;
     private final OrganizationEventPort organizationEventPort;
+    private final PasswordEncoder passwordEncoder;
 
     public Mono<Organization> execute(String email, String password) {
         return organizationPersistencePort.findByEmail(email)
                 .switchIfEmpty(Mono.error(new EntityNotFoundException("Организация не найдена")))
                 .flatMap(org -> {
-                    // Проверка пароля (в реальном приложении используется хеширование)
-                    if (!org.getPassword().equals(password)) {
+                    // Проверка пароля с использованием PasswordEncoder
+                    if (!passwordEncoder.matches(password, org.getPassword())) {
                         return Mono.error(new EntityNotFoundException("Неверный пароль"));
                     }
                     return organizationEventPort.publishOrganizationLoggedIn(org.getId())

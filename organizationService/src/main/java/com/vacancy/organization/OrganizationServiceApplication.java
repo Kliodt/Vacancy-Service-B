@@ -3,6 +3,7 @@ package com.vacancy.organization;
 import java.util.List;
 import java.util.Map;
 
+import org.modelmapper.ModelMapper;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
@@ -51,6 +52,11 @@ public class OrganizationServiceApplication {
         Map<String, Object> props = kafkaProperties.buildProducerProperties();
         SenderOptions<String, String> options = SenderOptions.create(props);
         return KafkaSender.create(options);
+    }
+
+    @Bean
+    public ModelMapper modelMapper() {
+        return new ModelMapper();
     }
 
 }

@@ -6,15 +6,14 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
-import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.support.WebExchangeBindException;
 
 import com.vacancy.organization.application.exception.AccessDeniedException;
 import com.vacancy.organization.application.exception.ConflictException;
 import com.vacancy.organization.application.exception.DomainException;
 import com.vacancy.organization.application.exception.EntityNotFoundException;
-import com.vacancy.organization.application.exception.ForbiddenRoleException;
 
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -51,14 +50,6 @@ public class GlobalExceptionHandler {
         return Mono.just(ResponseEntity.status(HttpStatus.CONFLICT).body(error));
     }
 
-    @ExceptionHandler(ForbiddenRoleException.class)
-    public Mono<ResponseEntity<Map<String, String>>> handleForbiddenRole(ForbiddenRoleException e) {
-        log.error("Forbidden role: {}", e.getMessage());
-        Map<String, String> error = new HashMap<>();
-        error.put("error", e.getMessage());
-        return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).body(error));
-    }
-
     @ExceptionHandler(DomainException.class)
     public Mono<ResponseEntity<Map<String, String>>> handleDomainException(DomainException e) {
         log.error("Domain exception: {}", e.getMessage());
@@ -85,4 +76,3 @@ public class GlobalExceptionHandler {
         return Mono.just(ResponseEntity.status(500).body("Internal error :)"));
     }
 }
-

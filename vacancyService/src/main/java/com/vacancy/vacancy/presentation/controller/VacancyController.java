@@ -54,7 +54,7 @@ public class VacancyController {
     private final AuthenticationToDomainConverter authConverter;
 
     @Operation(summary = "Получить все вакансии")
-    @GetMapping(value = "/", params = "!organizationId")
+    @GetMapping(value = "/all")
     public ResponseEntity<List<VacancyResponseDto>> getAllVacancies(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
@@ -77,7 +77,7 @@ public class VacancyController {
     }
 
     @Operation(summary = "Получить все вакансии по id организации")
-    @GetMapping(value = "/", params = "organizationId")
+    @GetMapping(value = "/")
     public ResponseEntity<List<VacancyResponseDto>> getVacancyByOrganization(@RequestParam Long organizationId) {
         List<Vacancy> vacancies = getVacanciesByOrganizationUseCase.execute(organizationId);
         List<VacancyResponseDto> dtoList = vacancies.stream()

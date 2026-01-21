@@ -3,7 +3,6 @@ package com.vacancy.vacancy.infrastructure.security;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
@@ -26,26 +25,22 @@ public class AuthenticationToDomainConverter {
      */
     public CurrentUser convert(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) {
-            throw new BadCredentialsException("Can't convert unauthenticated user");
+            return null;
         }
-        
-        Long userId = (Long) auth.getPrincipal();
-        Set<Role> roles = auth.getAuthorities().stream()
-            .map(GrantedAuthority::getAuthority)
-            .map(this::parseRole)
-            .collect(Collectors.toSet());
-        
-        return new CurrentUser(userId, roles);
+                
+        return extractCurrentUserFromAuthorities((Long) auth.getPrincipal(), auth);
     }
     
-    /**
-     * Преобразует строку роли в enum
-     */
-    private Role parseRole(String authority) {
-        return switch (authority) {
-            case "ROLE_ORGANIZATION" -> Role.ORGANIZATION;
-            case "ROLE_USER" -> Role.USER;
-            default -> Role.USER;
-        };
+    public CurrentUser extractCurrentUserFromAuthorities(Long userId, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+
+        Set<Role> roles = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .map(authority -> Role.valueOf(authority.replace("ROLE_", "")))
+                .collect(Collectors.toSet());
+
+        return new CurrentUser(userId, roles);
     }
 }

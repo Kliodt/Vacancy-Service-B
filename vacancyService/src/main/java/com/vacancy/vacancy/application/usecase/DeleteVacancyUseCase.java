@@ -3,6 +3,7 @@ package com.vacancy.vacancy.application.usecase;
 import org.springframework.stereotype.Component;
 
 import com.vacancy.vacancy.application.exception.AccessDeniedException;
+import com.vacancy.vacancy.application.exception.EntityNotFoundException;
 import com.vacancy.vacancy.application.exception.ForbiddenRoleException;
 import com.vacancy.vacancy.domain.model.CurrentUser;
 import com.vacancy.vacancy.domain.model.Role;
@@ -28,7 +29,12 @@ public class DeleteVacancyUseCase {
             throw new ForbiddenRoleException("Только организации могут удалять вакансии");
         }
         
-        Vacancy vac = getVacancyByIdUseCase.execute(vacancyId);
+        Vacancy vac;
+        try {
+            vac = getVacancyByIdUseCase.execute(vacancyId);
+        } catch (EntityNotFoundException e) {
+            return;
+        }
 
         if (!vac.getOrganizationId().equals(currentUser.getId()))
             throw new AccessDeniedException("Нельзя удалять вакансии другой организации");

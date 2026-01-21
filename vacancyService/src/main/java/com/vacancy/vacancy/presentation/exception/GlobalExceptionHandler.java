@@ -53,7 +53,6 @@ public class GlobalExceptionHandler {
         log.error("Forbidden role: {}", e.getMessage());
         Map<String, String> error = new HashMap<>();
         error.put("error", e.getMessage());
-        error.put("reason", "INSUFFICIENT_ROLE");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
@@ -62,7 +61,6 @@ public class GlobalExceptionHandler {
         log.error("Access denied: {}", e.getMessage());
         Map<String, String> error = new HashMap<>();
         error.put("error", e.getMessage());
-        error.put("reason", "ACCESS_DENIED");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 

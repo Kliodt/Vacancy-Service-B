@@ -30,7 +30,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import com.vacancy.organization.exceptions.RequestException;
-import com.vacancy.organization.kafka.KafkaProducerService;
+import com.vacancy.organization.infrastructure.messaging.KafkaOrganizationEventAdapter;
 import com.vacancy.organization.model.Organization;
 import com.vacancy.organization.repository.OrganizationRepository;
 
@@ -53,7 +53,7 @@ class OrganizationServiceTest {
     OrganizationService organizationService;
 
     @MockitoBean
-    KafkaProducerService kafkaProducerService;
+    KafkaOrganizationEventAdapter kafkaProducerService;
 
     private Organization testOrganization;
 

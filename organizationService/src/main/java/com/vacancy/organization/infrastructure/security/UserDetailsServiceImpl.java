@@ -1,5 +1,6 @@
 package com.vacancy.organization.infrastructure.security;
 
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -17,8 +18,10 @@ public class UserDetailsServiceImpl implements ReactiveUserDetailsService {
 
     @Override
     public Mono<UserDetails> findByUsername(String username) {
-        // Organization implements UserDetails, username here is organization email
-        return organizationRepository.findByEmail(username).map(CustomUserDetails::new);
+        return organizationRepository.findByEmail(username)
+            .map(CustomUserDetails::new)
+            .switchIfEmpty(Mono.error(new BadCredentialsException("Invalid credentials")))
+            .map(x -> x);
     }
 
 }

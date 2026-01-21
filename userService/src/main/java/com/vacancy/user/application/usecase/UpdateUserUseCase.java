@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 
 import com.vacancy.user.application.exception.AccessDeniedException;
 import com.vacancy.user.application.exception.ConflictException;
+import com.vacancy.user.application.exception.EntityNotFoundException;
 import com.vacancy.user.domain.model.CurrentUser;
 import com.vacancy.user.domain.model.Role;
 import com.vacancy.user.domain.model.User;
@@ -62,6 +63,7 @@ public class UpdateUserUseCase {
 
         // Otherwise, check file, then save
         return fileServicePort.getFileById(newCvFile)
+                .onErrorMap(err -> new EntityNotFoundException("Файл не найден"))
                 .then(Mono.fromCallable(() -> {
                     existingUser.updateWithOther(updated);
                     return existingUser;

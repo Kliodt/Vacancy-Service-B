@@ -38,7 +38,7 @@ public class JwtUtils {
         String subject = claims.getSubject();
         List<String> roles = claims.get("roles", List.class);
         List<SimpleGrantedAuthority> authorities = (roles == null) ? List.of()
-                : roles.stream().map(SimpleGrantedAuthority::new).toList();
+                : roles.stream().map(a -> "ROLE_" + a).map(SimpleGrantedAuthority::new).toList();
         return new UsernamePasswordAuthenticationToken(Long.valueOf(subject), token, authorities);
     }
 

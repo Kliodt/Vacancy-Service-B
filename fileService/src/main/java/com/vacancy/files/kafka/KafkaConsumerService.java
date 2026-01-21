@@ -15,11 +15,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vacancy.files.model.FileObject;
 import com.vacancy.files.repository.FileRepository;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class KafkaConsumerService {
 
@@ -45,7 +43,7 @@ public class KafkaConsumerService {
         }
     }
 
-    @KafkaListener(topics = "user.deleted", groupId = "vacancy-service")
+    @KafkaListener(topics = "user.deleted", groupId = "file-service")
     public void handleUserDeleted(String message) {
         try {
             JsonNode json = objectMapper.readTree(message);

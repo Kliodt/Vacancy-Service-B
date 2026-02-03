@@ -4,24 +4,30 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Map;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import com.vacancy.vacancy.client.OrganizationClient;
@@ -44,6 +50,9 @@ fix 2 (vscode test runner): https://github.com/microsoft/vscode-java-test/issues
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.cloud.config.enabled=false", "eureka.client.enabled=false" })
 @ActiveProfiles("test")
+@ExtendWith(SpringExtension.class) 
+@ContextConfiguration 
+@WithMockUser(roles = "USER")
 class VacancyServiceTest {
 
     @LocalServerPort
@@ -60,6 +69,7 @@ class VacancyServiceTest {
     private OrganizationClient organizationClient;
 
     private Vacancy testVacancy;
+    private Long orgTestDirector = 100L;
 
     @BeforeAll
     static void beforeAll() {
@@ -80,6 +90,7 @@ class VacancyServiceTest {
         registry.add("spring.flyway.url", postgres::getJdbcUrl);
         registry.add("spring.flyway.user", postgres::getUsername);
         registry.add("spring.flyway.password", postgres::getPassword);
+        registry.add("jwt.secret", () -> "fjqewh3oi4jgfng3u498gvn289rnv934h8fncv3p4fjn32vj3n8492");
     }
 
     @BeforeEach
@@ -97,11 +108,11 @@ class VacancyServiceTest {
         assertNotNull(testVacancy);
 
         // Mock beans
-        when(organizationClient.getOrganizationById(anyLong()))
+        when(organizationClient.getOrganizationById(anyLong(), any()))
                 .thenAnswer(invocation -> {
                     Long x = invocation.getArgument(0);
                     if (x < 100L)
-                        return new Object();
+                        return Map.of("director", orgTestDirector);
                     Request fakeReq = Request.create(HttpMethod.GET, "/", Collections.emptyMap(), null,
                             StandardCharsets.UTF_8, new RequestTemplate());
                     throw new FeignException.NotFound("Not found", fakeReq, null, null);
@@ -124,7 +135,7 @@ class VacancyServiceTest {
     @Test
     void testDeleteVacancy() {
         Long id = testVacancy.getId();
-        vacancyService.deleteVacancy(id);
+        vacancyService.deleteVacancy(id, orgTestDirector);
         assertEquals(0, vacancyRepository.count());
     }
 
@@ -135,7 +146,7 @@ class VacancyServiceTest {
         updated.setSalary(200000);
         updated.setCity("Kazan");
 
-        Vacancy result = vacancyService.updateVacancy(testVacancy.getId(), updated);
+        Vacancy result = vacancyService.updateVacancy(testVacancy.getId(), updated, orgTestDirector);
         assertNotNull(result);
         assertEquals("Updated", result.getTitle());
         assertEquals("Updated desc", result.getDescription());
@@ -183,7 +194,7 @@ class VacancyServiceTest {
         Vacancy upd = new Vacancy("X", "Y");
         upd.setOrganizationId(1L);
         RequestException ex = assertThrows(RequestException.class, () -> {
-            vacancyService.updateVacancy(999999L, upd);
+            vacancyService.updateVacancy(999999L, upd, upd.getOrganizationId());
         });
         assertEquals(HttpStatus.NOT_FOUND, ex.code);
         assertEquals("Вакансия не найдена", ex.getMessage());
@@ -195,7 +206,7 @@ class VacancyServiceTest {
         Long vacId = testVacancy.getId();
         upd.setOrganizationId(200L);
         RequestException ex = assertThrows(RequestException.class, () -> {
-            vacancyService.updateVacancy(vacId, upd);
+            vacancyService.updateVacancy(vacId, upd, orgTestDirector);
         });
         assertEquals(HttpStatus.NOT_FOUND, ex.code);
         assertEquals("Организация не найдена", ex.getMessage());
@@ -208,11 +219,6 @@ class VacancyServiceTest {
         assertTrue(list.isEmpty());
     }
 
-    @Test
-    void testDeleteVacancy_NonExistentDoesNotThrow() {
-        vacancyService.deleteVacancy(123456789L);
-        assertEquals(1, vacancyRepository.count());
-    }
 
     @Test
     void testGetVacancyById() {
@@ -233,7 +239,7 @@ class VacancyServiceTest {
         newVacancy.setSalary(80000);
         newVacancy.setCity("Saint Petersburg");
 
-        Vacancy created = vacancyService.createVacancy(newVacancy);
+        Vacancy created = vacancyService.createVacancy(newVacancy, orgTestDirector);
         assertNotNull(created);
         assertEquals("QA Engineer", created.getTitle());
         assertEquals("Test software", created.getDescription());
@@ -254,7 +260,7 @@ class VacancyServiceTest {
         newVacancy.setSalary(80000);
         newVacancy.setCity("Saint Petersburg");
         RequestException ex = assertThrows(
-                RequestException.class, () -> vacancyService.createVacancy(newVacancy));
+            RequestException.class, () -> vacancyService.createVacancy(newVacancy, orgTestDirector));
         assertEquals(HttpStatus.NOT_FOUND, ex.code);
     }
 

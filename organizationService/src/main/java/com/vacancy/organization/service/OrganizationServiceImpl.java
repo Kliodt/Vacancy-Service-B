@@ -1,9 +1,14 @@
 package com.vacancy.organization.service;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.vacancy.organization.exceptions.RequestException;
+import com.vacancy.organization.kafka.KafkaProducerService;
 import com.vacancy.organization.model.Organization;
 import com.vacancy.organization.repository.OrganizationRepository;
 
@@ -15,10 +20,16 @@ import reactor.core.publisher.Mono;
 @Service
 @Slf4j
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class OrganizationServiceImpl implements OrganizationService {
 
-    private static final String ORGANIZATION_NOT_FOUND = "Организация не найдена";
+    private static final String ORG_NOT_FOUND_STR = "Организация не найдена";
+    private static final String ORG_SAME_EMAIL_STR = "С таким email уже зарегистрирована другая организация";
+    private static final String ORG_ACCESS_FORBIDDEN = "Доступ к организации запрещен";
+
     private final OrganizationRepository organizationRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final KafkaProducerService kafkaProducer;
 
     public Flux<Organization> getAllOrganizations(int page, int size) {
         if (size > 50)
@@ -29,36 +40,46 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     public Mono<Organization> getOrganizationById(long id) {
         return organizationRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORGANIZATION_NOT_FOUND)));
+                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORG_NOT_FOUND_STR)));
     }
 
+    @PreAuthorize("hasRole('ROLE_SUPERVISOR')")
     public Mono<Organization> createOrganization(Organization organization) {
         return organizationRepository.findOrganizationByEmail(organization.getEmail())
-                .flatMap(existing -> Mono.<Organization>error(new RequestException(HttpStatus.CONFLICT,
-                        "С таким email уже зарегистрирована другая организация")))
-                .switchIfEmpty(organizationRepository.save(organization));
+                .flatMap(existing -> Mono
+                        .<Organization>error(new RequestException(HttpStatus.CONFLICT, ORG_SAME_EMAIL_STR)))
+                .switchIfEmpty(Mono.fromCallable(() -> {
+                    organization.setPassword(passwordEncoder.encode(organization.getPassword()));
+                    return organization;
+                }).flatMap(organizationRepository::save));
     }
 
-    public Mono<Organization> updateOrganization(long id, Organization organization) {
+    @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
+    public Mono<Organization> updateOrganization(long id, Organization organization, Authentication auth) {
+        if (!auth.getPrincipal().equals(id)) 
+            return Mono.error(new RequestException(HttpStatus.FORBIDDEN, ORG_ACCESS_FORBIDDEN));
+
         return organizationRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORGANIZATION_NOT_FOUND)))
-                .flatMap(existingOrganization -> organizationRepository.findOrganizationByEmail(organization.getEmail())
+                .switchIfEmpty(Mono.error(new RequestException(HttpStatus.NOT_FOUND, ORG_NOT_FOUND_STR)))
+                .flatMap(oldOrg -> organizationRepository
+                        .findOrganizationByEmail(organization.getEmail())
+                        .switchIfEmpty(Mono.just(oldOrg))
                         .flatMap(existingByEmail -> {
                             if (!existingByEmail.getId().equals(id)) {
-                                return Mono.error(new RequestException(HttpStatus.CONFLICT,
-                                        "С таким email уже зарегистрирована другая организация"));
+                                return Mono.error(new RequestException(HttpStatus.CONFLICT, ORG_SAME_EMAIL_STR));
                             }
-                            return Mono.empty();
-                        })
-                        .switchIfEmpty(Mono.just(existingOrganization))
-                        .flatMap(org -> {
-                            existingOrganization.updateWithOther(organization);
-                            return organizationRepository.save(existingOrganization);
+                            oldOrg.updateWithOther(organization);
+                            return organizationRepository.save(oldOrg);
                         }));
     }
 
-    public Mono<Void> deleteOrganization(long id) {
-        return organizationRepository.deleteById(id);
-    }
+    @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
+    public Mono<Void> deleteOrganization(long id, Authentication auth) {
+        if (!auth.getPrincipal().equals(id)) 
+            return Mono.error(new RequestException(HttpStatus.FORBIDDEN, ORG_ACCESS_FORBIDDEN));
 
+        return Mono.fromRunnable(() -> organizationRepository.deleteById(id))
+                .then(kafkaProducer.sendOrganizationDeleted(id))
+                .then();
+    }
 }

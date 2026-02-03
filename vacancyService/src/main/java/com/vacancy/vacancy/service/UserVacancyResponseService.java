@@ -1,16 +1,17 @@
 package com.vacancy.vacancy.service;
 
-
 import java.util.List;
+
+import org.springframework.security.core.Authentication;
 
 import com.vacancy.vacancy.model.UserVacancyResponse;
 
 public interface UserVacancyResponseService {
-    List<UserVacancyResponse> getUserResponses(long userId);
-    List<UserVacancyResponse> getVacancyResponses(long vacancyId);
-    List<UserVacancyResponse> getVacancyResponsesForUser(long userId, long vacancyId);
+    public List<UserVacancyResponse> getUserResponses(Authentication auth);
+    public List<UserVacancyResponse> getVacancyResponses(long vacancyId, Authentication auth);
 
-    void respondToVacancy(long vacancyId, long userId);
-    void removeResponseFromVacancy(long vacancyId, long userId);
+    public UserVacancyResponse respondToVacancy(long vacancyId, Authentication auth);
+    public void removeResponseFromVacancy(long vacancyId, Authentication auth);
 
+    public UserVacancyResponse changeResponseStatus(long responseId, UserVacancyResponse.Status status, Authentication auth);
 }

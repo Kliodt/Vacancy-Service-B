@@ -3,21 +3,34 @@ package com.vacancy.organization.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import com.vacancy.organization.exceptions.RequestException;
+import com.vacancy.organization.kafka.KafkaProducerService;
 import com.vacancy.organization.model.Organization;
 import com.vacancy.organization.repository.OrganizationRepository;
 
@@ -26,6 +39,8 @@ import reactor.test.StepVerifier;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.cloud.config.enabled=false", "eureka.client.enabled=false" })
 @ActiveProfiles("test")
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration
 class OrganizationServiceTest {
 
     @LocalServerPort
@@ -36,6 +51,9 @@ class OrganizationServiceTest {
     OrganizationRepository organizationRepository;
     @Autowired
     OrganizationService organizationService;
+
+    @MockitoBean
+    KafkaProducerService kafkaProducerService;
 
     private Organization testOrganization;
 
@@ -62,6 +80,8 @@ class OrganizationServiceTest {
                 postgres.getHost(), postgres.getFirstMappedPort(), postgres.getDatabaseName()));
         registry.add("spring.r2dbc.username", postgres::getUsername);
         registry.add("spring.r2dbc.password", postgres::getPassword);
+        registry.add("jwt.secret", () -> "fjqewh3oi4jgfng3u498gvn289rnv934h8fncv3p4fjn32vj3n8492");
+        registry.add("jwt.expiration-ms", () -> 3600000);
     }
 
     @BeforeEach
@@ -76,7 +96,21 @@ class OrganizationServiceTest {
         // Save a test organization for use in tests
         testOrganization = organizationRepository.save(org).block();
         assertNotNull(testOrganization);
+
+        // Stub kafka producer so tests don't require a running Kafka broker
+        when(kafkaProducerService.sendOrganizationDeleted(anyLong())).thenReturn(reactor.core.publisher.Mono.empty());
+        when(kafkaProducerService.sendOrganizationLoggedIn(anyLong())).thenReturn(reactor.core.publisher.Mono.empty());
     }
+
+    // void setContextPrincipal(long id, String role) {
+    // if (!role.startsWith("ROLE_"))
+    // role = "ROLE_" + role;
+    // var ctx = SecurityContextHolder.createEmptyContext();
+    // ctx.setAuthentication(
+    // new UsernamePasswordAuthenticationToken(Long.valueOf(id), null,
+    // List.of(new SimpleGrantedAuthority(role))));
+    // SecurityContextHolder.setContext(ctx);
+    // }
 
     @Test
     void getOrganizationById_found() {
@@ -96,6 +130,7 @@ class OrganizationServiceTest {
     }
 
     @Test
+    @WithMockUser(roles = "SUPERVISOR")
     void createOrganization_success() {
         Organization toCreate = new Organization();
         toCreate.setEmail("new@example.com");
@@ -107,6 +142,7 @@ class OrganizationServiceTest {
     }
 
     @Test
+    @WithMockUser(roles = "SUPERVISOR")
     void createOrganization_conflict() {
         Organization toCreate = new Organization();
         toCreate.setEmail(testOrganization.getEmail());
@@ -121,6 +157,7 @@ class OrganizationServiceTest {
     }
 
     @Test
+    @WithMockUser(roles = "ORGANIZATION")
     void updateOrganization_notFound() {
         Organization upd = new Organization();
         upd.setEmail("x@example.com");
@@ -135,6 +172,7 @@ class OrganizationServiceTest {
     }
 
     @Test
+    @WithMockUser(roles = "ORGANIZATION")
     void updateOrganization_conflictEmail() {
         Organization newOrg = new Organization();
         newOrg.setEmail("new@example.com");
@@ -160,11 +198,14 @@ class OrganizationServiceTest {
         Organization upd = new Organization();
         upd.setEmail("updated@example.com");
         upd.setNickname("Updated");
+        // no director field any more
 
         Organization saved = new Organization();
         saved.setId(testOrganization.getId());
         saved.setEmail(upd.getEmail());
         saved.setNickname(upd.getNickname());
+
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(testOrganization.getId(), null, List.of(new SimpleGrantedAuthority("ROLE_ORGANIZATION"))));
 
         StepVerifier.create(organizationService.updateOrganization(testOrganization.getId(), upd))
                 .expectNextMatches(o -> o.getEmail().equals("updated@example.com") && o.getNickname().equals("Updated"))
@@ -176,9 +217,11 @@ class OrganizationServiceTest {
         Organization upd = new Organization();
         upd.setEmail(testOrganization.getEmail());
         upd.setNickname("Updated");
+        // no director field any more
 
         StepVerifier.create(organizationService.updateOrganization(testOrganization.getId(), upd))
-                .expectNextMatches(o -> o.getEmail().equals(testOrganization.getEmail()) && o.getNickname().equals("Updated"))
+                .expectNextMatches(
+                        o -> o.getEmail().equals(testOrganization.getEmail()) && o.getNickname().equals("Updated"))
                 .verifyComplete();
     }
 

@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: file-service
+
+  cloud:
+    config:
+      uri: ${CONFIG_SERVER:http://localhost:8888}
+      fail-fast: true
+
+  profiles:
+    active: ${PROFILE:dev}

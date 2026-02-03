@@ -3,12 +3,15 @@ package com.vacancy.vacancy.service;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.vacancy.vacancy.client.Clients;
 import com.vacancy.vacancy.exceptions.RequestException;
+import com.vacancy.vacancy.kafka.KafkaProducerService;
 import com.vacancy.vacancy.model.UserVacancyResponse;
+import com.vacancy.vacancy.model.Vacancy;
 import com.vacancy.vacancy.repository.UserVacancyResponseRepository;
 import com.vacancy.vacancy.repository.VacancyRepository;
 
@@ -16,46 +19,72 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class UserVacancyResponseServiceImpl implements UserVacancyResponseService {
 
     private final UserVacancyResponseRepository responseRepository;
     private final VacancyRepository vacancyRepository;
-    private final Clients clients;
+    private final KafkaProducerService kafkaProducer;
 
-    @Transactional(readOnly = true)
-    public List<UserVacancyResponse> getUserResponses(long userId) {
-        return responseRepository.findByUserId(userId);
+    private Vacancy getVacancyById(long id) {
+        return vacancyRepository.findById(id)
+                .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена"));
     }
 
     @Transactional(readOnly = true)
-    public List<UserVacancyResponse> getVacancyResponses(long vacancyId) {
+    @PreAuthorize("hasRole('ROLE_USER')")
+    public List<UserVacancyResponse> getUserResponses(Authentication auth) {
+        return responseRepository.findByUserId((Long) auth.getPrincipal());
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
+    public List<UserVacancyResponse> getVacancyResponses(long vacancyId, Authentication auth) {
+        Vacancy vac = getVacancyById(vacancyId);
+
+        if (!vac.getOrganizationId().equals(auth.getPrincipal()))
+            throw new RequestException(HttpStatus.FORBIDDEN, "Вакансия не принадлежит данной организации");
+
         return responseRepository.findByVacancyId(vacancyId);
     }
 
-    @Transactional(readOnly = true)
-    public List<UserVacancyResponse> getVacancyResponsesForUser(long userId, long vacancyId) {
-        return responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
+    @PreAuthorize("hasRole('ROLE_USER')")
+    public UserVacancyResponse respondToVacancy(long vacancyId, Authentication auth) {
+        getVacancyById(vacancyId);
+        Long userId = (Long) auth.getPrincipal();
+        List<UserVacancyResponse> existing = responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
+
+        if (!existing.isEmpty())
+            responseRepository.deleteAll(existing);
+
+        UserVacancyResponse saved = responseRepository.save(new UserVacancyResponse(userId, vacancyId));
+        kafkaProducer.sendVacancyResponseCreated(saved);
+        return saved;
     }
 
     @Transactional
-    public void removeResponseFromVacancy(long vacancyId, long userId) {
-        responseRepository.deleteByUserIdAndVacancyId(userId, vacancyId);
+    @PreAuthorize("hasRole('ROLE_USER')")
+    public void removeResponseFromVacancy(long vacancyId, Authentication auth) {
+        responseRepository.deleteByUserIdAndVacancyId((Long) auth.getPrincipal(), vacancyId);
     }
 
-    public void respondToVacancy(long vacancyId, long userId) {
-        try {
-            clients.getUserById(userId);
-        } catch (Exception e) {
-            throw new RequestException(HttpStatus.NOT_FOUND, "Пользователь не найден");
-        }
-        if (vacancyRepository.findById(vacancyId).isEmpty()) {
-            throw new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена");
-        }
-        List<UserVacancyResponse> existing = responseRepository.findByUserIdAndVacancyId(userId, vacancyId);
-        if (!existing.isEmpty()) {
-            responseRepository.deleteAll(existing);
-        }
-        responseRepository.save(new UserVacancyResponse(userId, vacancyId));
-    }
+    @Transactional
+    @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
+    public UserVacancyResponse changeResponseStatus(long responseId, UserVacancyResponse.Status status,
+            Authentication auth) {
+        UserVacancyResponse resp = responseRepository.findById(responseId).orElseThrow(
+                () -> new RequestException(HttpStatus.NOT_FOUND, "Отклик на вакансию не найден"));
 
+        Vacancy vac = getVacancyById(resp.getVacancyId());
+
+        if (!vac.getOrganizationId().equals(auth.getPrincipal()))
+            throw new RequestException(HttpStatus.FORBIDDEN, "Вакансия не принадлежит данной организации");
+
+        resp.setStatus(status);
+        resp = responseRepository.save(resp);
+
+        kafkaProducer.sendVacancyResponseUpdated(resp);
+
+        return resp;
+    }
 }

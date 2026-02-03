@@ -28,16 +28,23 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator:3.3.3'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
-    implementation 'com.playtika.reactivefeign:feign-reactor-webclient:4.1.0'
-    implementation 'com.playtika.reactivefeign:feign-reactor-cloud:4.1.0'
-    implementation 'com.playtika.reactivefeign:feign-reactor-spring-configuration:4.1.0'
-    implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
     implementation 'org.springframework.cloud:spring-cloud-starter-bootstrap:4.1.0'
     implementation 'org.springframework.cloud:spring-cloud-starter-config:4.1.4'
 
     implementation 'org.springdoc:springdoc-openapi-starter-webflux-ui:2.8.13'
 
     implementation 'org.modelmapper:modelmapper:3.2.5'
+
+    // Kafka
+    implementation 'io.projectreactor.kafka:reactor-kafka:1.3.23'
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    // JWT and security
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+    testImplementation 'org.springframework.security:spring-security-test'
 
     implementation 'org.jetbrains:annotations:24.0.1'
     compileOnly 'org.projectlombok:lombok'

@@ -1,4 +1,3 @@
-version: '3.8'
 
 networks:
   backend-net:
@@ -6,10 +5,23 @@ networks:
   public-net:
     driver: bridge
 
+
+volumes:
+  organization_db_data:
+  user_db_data:
+  vacancy_db_data:
+  file_db_data:
+  kafka_data_1:
+  kafka_data_2:
+  kafka_data_3:
+  file_storage:
+
+
 services:
 
   config-server:
     image: config-server:latest
+    build: ./configServer
     container_name: config_server_container
     restart: no
     networks:
@@ -20,6 +32,7 @@ services:
 
   eureka-server:
     image: eureka-server:latest
+    build: ./eurekaServer
     container_name: eureka_server_container
     restart: no
     networks:
@@ -29,6 +42,7 @@ services:
 
   gateway-service:
     image: gateway-service:latest
+    build: ./gatewayService
     container_name: gateway_service_container
     restart: no
     depends_on:
@@ -37,10 +51,15 @@ services:
       - backend-net
       - public-net
     ports:
-      - "8080:8080"   # ✅ единственный внешний порт
+      - "8080:8080"   # внешний порт
+    environment:
+      CONFIG_SERVER: ${CONFIG_SERVER}
+      EUREKA_SERVER: ${EUREKA_SERVER}
+
 
   organization-service:
     image: organization-service:latest
+    build: ./organizationService
     container_name: organization_service_container
     restart: no
     depends_on:
@@ -49,13 +68,15 @@ services:
       - organization-db
     networks:
       - backend-net
-    expose:
-      - "8081"
     environment:
       DB_URL: r2dbc:postgresql://organization-db:5432/${DB_ORG_NAME}
       DB_URL_2: jdbc:postgresql://organization-db:5432/${DB_ORG_NAME}
       DB_USER: ${DB_ORG_USER}
       DB_PASS: ${DB_ORG_PASS}
+      JWT_SECRET: ${JWT_SECRET}
+      CONFIG_SERVER: ${CONFIG_SERVER}
+      EUREKA_SERVER: ${EUREKA_SERVER}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
 
   organization-db:
     image: postgres:17
@@ -74,6 +95,7 @@ services:
 
   user-service:
     image: user-service:latest
+    build: ./userService
     container_name: user_service_container
     restart: no
     depends_on:
@@ -82,12 +104,16 @@ services:
       - user-db
     networks:
       - backend-net
-    expose:
-      - "8082"
     environment:
       DB_URL: jdbc:postgresql://user-db:5432/${DB_USER_NAME}
       DB_USER: ${DB_USER_USER}
       DB_PASS: ${DB_USER_PASS}
+      JWT_SECRET: ${JWT_SECRET}
+      SUPERVISOR_EMAIL: ${SUPERVISOR_EMAIL}
+      SUPERVISOR_PASS: ${SUPERVISOR_PASS}
+      CONFIG_SERVER: ${CONFIG_SERVER}
+      EUREKA_SERVER: ${EUREKA_SERVER}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
 
   user-db:
     image: postgres:17
@@ -106,6 +132,7 @@ services:
 
   vacancy-service:
     image: vacancy-service:latest
+    build: ./vacancyService
     container_name: vacancy_service_container
     restart: no
     depends_on:
@@ -114,12 +141,14 @@ services:
       - vacancy-db
     networks:
       - backend-net
-    expose:
-      - "8083"
     environment:
       DB_URL: jdbc:postgresql://vacancy-db:5432/${DB_VACANCY_NAME}
       DB_USER: ${DB_VACANCY_USER}
       DB_PASS: ${DB_VACANCY_PASS}
+      JWT_SECRET: ${JWT_SECRET}
+      CONFIG_SERVER: ${CONFIG_SERVER}
+      EUREKA_SERVER: ${EUREKA_SERVER}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
 
   vacancy-db:
     image: postgres:17
@@ -136,7 +165,189 @@ services:
     volumes:
       - vacancy_db_data:/var/lib/postgresql/data
 
-volumes:
-  organization_db_data:
-  user_db_data:
-  vacancy_db_data:
+  kafka-controller-1:
+    image: apache/kafka:latest
+    container_name: kafka_controller_1_container
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: controller
+      KAFKA_LISTENERS: CONTROLLER://:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      - backend-net
+
+  kafka-controller-2:
+    image: apache/kafka:latest
+    container_name: kafka_controller_2_container
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_PROCESS_ROLES: controller
+      KAFKA_LISTENERS: CONTROLLER://:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      - backend-net
+
+  kafka-controller-3:
+    image: apache/kafka:latest
+    container_name: kafka_controller_3_container
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_PROCESS_ROLES: controller
+      KAFKA_LISTENERS: CONTROLLER://:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      - backend-net    
+
+  kafka-broker-1:
+    image: apache/kafka:latest
+    container_name: kafka_broker_1_container
+    environment:
+      KAFKA_NODE_ID: 4
+      KAFKA_PROCESS_ROLES: broker
+      KAFKA_LISTENERS: 'PLAINTEXT://:19092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-broker-1:19092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: false
+      KAFKA_KRAFT_MODE: true
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka_data_1:/var/lib/kafka/data
+    networks:
+      - backend-net
+    depends_on:
+      - kafka-controller-1
+      - kafka-controller-2
+      - kafka-controller-3
+
+  kafka-broker-2:
+    image: apache/kafka:latest
+    container_name: kafka_broker_2_container
+    environment:
+      KAFKA_NODE_ID: 5
+      KAFKA_PROCESS_ROLES: broker
+      KAFKA_LISTENERS: 'PLAINTEXT://:19092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-broker-2:19092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: false
+      KAFKA_KRAFT_MODE: true
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka_data_2:/var/lib/kafka/data
+    networks:
+      - backend-net
+    depends_on:
+      - kafka-controller-1
+      - kafka-controller-2
+      - kafka-controller-3
+
+  kafka-broker-3:
+    image: apache/kafka:latest
+    container_name: kafka_broker_3_container
+    environment:
+      KAFKA_NODE_ID: 6
+      KAFKA_PROCESS_ROLES: broker
+      KAFKA_LISTENERS: 'PLAINTEXT://:19092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-broker-3:19092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: false
+      KAFKA_KRAFT_MODE: true
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka_data_3:/var/lib/kafka/data
+    networks:
+      - backend-net
+    depends_on:
+      - kafka-controller-1
+      - kafka-controller-2
+      - kafka-controller-3
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka_ui_container
+    expose:
+      - "8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=broker
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka-broker-1:19092,kafka-broker-2:19092,kafka-broker-3:19092
+      - SERVER_SERVLET_CONTEXT_PATH=/kafka
+    networks:
+      - backend-net
+    depends_on:
+      - kafka-broker-1
+      - kafka-broker-2
+      - kafka-broker-3
+
+  file-service:
+    image: file-service:latest
+    container_name: file_service_container
+    build: ./fileService
+    environment:
+      DB_URL: jdbc:postgresql://file-db:5432/${DB_FILE_NAME}
+      DB_USER: ${DB_FILE_USER}
+      DB_PASS: ${DB_FILE_PASS}
+
+      JWT_SECRET: ${JWT_SECRET}
+
+      CONFIG_SERVER: ${CONFIG_SERVER}
+      EUREKA_SERVER: ${EUREKA_SERVER}
+
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
+      STORAGE_DIR: /data/files
+
+    networks:
+      - backend-net
+    depends_on:
+      - file-db
+    volumes:
+      - file_storage:/data/files
+
+  file-db:
+    image: postgres:17
+    container_name: file_db_container
+    restart: no
+    networks:
+      - backend-net
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_USER: ${DB_FILE_USER}
+      POSTGRES_PASSWORD: ${DB_FILE_PASS}
+      POSTGRES_DB: ${DB_FILE_NAME}
+    volumes:
+      - file_db_data:/var/lib/postgresql/data
+
+  notification-service:
+    image: notification-service:latest
+    container_name: notification_service_container
+    build: ./notificationService
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+
+      CONFIG_SERVER: ${CONFIG_SERVER}
+      EUREKA_SERVER: ${EUREKA_SERVER}
+
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
+
+    networks:
+      - backend-net

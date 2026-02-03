@@ -6,10 +6,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
-import com.vacancy.vacancy.client.Clients;
 import com.vacancy.vacancy.exceptions.RequestException;
+import com.vacancy.vacancy.kafka.KafkaProducerService;
 import com.vacancy.vacancy.model.Vacancy;
 import com.vacancy.vacancy.repository.VacancyRepository;
 
@@ -19,15 +21,15 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class VacancyServiceImpl implements VacancyService {
 
     private final VacancyRepository vacancyRepository;
-    private final Clients clients;
+    private final KafkaProducerService kafkaProducer;
 
     public Page<Vacancy> getAllVacancies(int page, int size) {
-        if (size > 50) {
+        if (size > 50)
             size = 50;
-        }
         Pageable pageable = PageRequest.of(page, size);
         return vacancyRepository.findAll(pageable);
     }
@@ -37,37 +39,36 @@ public class VacancyServiceImpl implements VacancyService {
                 .orElseThrow(() -> new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена"));
     }
 
-    public void deleteVacancy(long id) {
-        vacancyRepository.deleteById(id);
+    public List<Vacancy> getVacanciesByOrganization(long orgId) {
+        return vacancyRepository.findByOrganizationId(orgId);
     }
 
-    public List<Vacancy> getVacanciesByOrganization(long id) {
-        return vacancyRepository.findByOrganizationId(id);
+    @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
+    public void deleteVacancy(long vacancyId, Authentication auth) {
+        Vacancy vac = getVacancyById(vacancyId);
+
+        if (!vac.getOrganizationId().equals(auth.getPrincipal()))
+            throw new RequestException(HttpStatus.FORBIDDEN, "Нельзя удалять вакансии другой организации");
+
+        vacancyRepository.delete(vac);
+        kafkaProducer.sendVacancyDeleted(vacancyId);
     }
 
-    public Vacancy updateVacancy(long id, Vacancy vacancy) {
-        Vacancy oldVac = vacancyRepository.findById(id).orElse(null);
-        if (oldVac == null)
-            throw new RequestException(HttpStatus.NOT_FOUND, "Вакансия не найдена");
+    @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
+    public Vacancy updateVacancy(long vacancyId, Vacancy vacancy, Authentication auth) {
+        Vacancy oldVac = getVacancyById(vacancyId);
 
-        try {
-            clients.getOrganizationById(vacancy.getOrganizationId());
-        } catch (Exception e) {
-            throw new RequestException(HttpStatus.NOT_FOUND, "Организация не найдена");
-        }
+        if (!oldVac.getOrganizationId().equals(auth.getPrincipal()))
+            throw new RequestException(HttpStatus.FORBIDDEN, "Нельзя изменять вакансии другой организации");
 
         oldVac.updateWithOther(vacancy);
 
         return vacancyRepository.save(oldVac);
     }
 
-    public Vacancy createVacancy(Vacancy vacancy) {
-        try {
-            clients.getOrganizationById(vacancy.getOrganizationId());
-        } catch (Exception e) {
-            throw new RequestException(HttpStatus.NOT_FOUND, "Организация не найдена");
-        }
+    @PreAuthorize("hasRole('ROLE_ORGANIZATION')")
+    public Vacancy createVacancy(Vacancy vacancy, Authentication auth) {
+        vacancy.setOrganizationId((Long) auth.getPrincipal());
         return vacancyRepository.save(vacancy);
     }
-
 }

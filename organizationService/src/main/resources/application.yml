@@ -1,17 +1,31 @@
 server:
-  port: 8081
+  port: 0
 
 spring:
-  r2dbc:
-    # url: r2dbc:postgresql://localhost:5432/organization_db
-    url: ${DB_URL}
-    username: ${DB_USER}
-    password: ${DB_PASS}
+  # r2dbc:
+  #   # url: r2dbc:postgresql://localhost:5432/organization_db
+  #   url: ${DB_URL}
+  #   username: ${DB_USER}
+  #   password: ${DB_PASS}
 
-  flyway:
-    url: ${DB_URL_2}
-    locations: classpath:db/migration
-    baseline-on-migrate: true
+  # flyway:
+  #   url: ${DB_URL_2}
+  #   locations: classpath:db/migration
+  #   baseline-on-migrate: true
 
   output:
     ansi.enabled: ALWAYS
+
+  # kafka:
+  #   bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}  # список брокеров
+  #   producer:
+  #     key-serializer: org.apache.kafka.common.serialization.StringSerializer
+  #     value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  #     acks: 1
+  #   consumer:
+  #     group-id: organization-service
+  #     auto-offset-reset: earliest
+
+# jwt:
+#   secret: ${JWT_SECRET}
+#   expiration-ms: 3600000  # 1 hour

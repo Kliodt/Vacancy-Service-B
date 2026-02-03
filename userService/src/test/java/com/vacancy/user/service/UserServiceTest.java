@@ -8,14 +8,22 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
@@ -34,6 +42,9 @@ import reactor.core.publisher.Mono;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.cloud.config.enabled=false", "eureka.client.enabled=false" })
 @ActiveProfiles("test")
+@ExtendWith(SpringExtension.class) 
+@ContextConfiguration 
+@WithMockUser(roles = "USER")
 class UserServiceTest {
 
     @LocalServerPort
@@ -68,6 +79,10 @@ class UserServiceTest {
         registry.add("spring.flyway.url", postgres::getJdbcUrl);
         registry.add("spring.flyway.user", postgres::getUsername);
         registry.add("spring.flyway.password", postgres::getPassword);
+        registry.add("jwt.secret", () -> "fjqewh3oi4jgfng3u498gvn289rnv934h8fncv3p4fjn32vj3n8492");
+        registry.add("jwt.expiration-ms", () -> 3600000);
+        registry.add("supervisor.email", () -> "su@su.su");
+        registry.add("supervisor.pass", () -> "su");
     }
 
     @BeforeEach
@@ -76,7 +91,7 @@ class UserServiceTest {
         userRepository.deleteAll();
 
         // Create test vacancy
-        User user = new User("TestUser", "example@gmail.com");
+        User user = new User("TestUser", "example@gmail.com", "pass");
         user.setCvLink("http://dirve/mycv.txt");
         // Save a test user for use in tests
         testUser = userRepository.save(user);
@@ -87,7 +102,7 @@ class UserServiceTest {
     void getAllUsers_simple_and_paged() {
         // create additional users
         for (int i = 0; i < 60; i++) {
-            User u = new User("User" + i, "u" + i + "@example.com");
+            User u = new User("User" + i, "u" + i + "@example.com", "pass");
             userRepository.save(u);
         }
 
@@ -117,13 +132,14 @@ class UserServiceTest {
     }
 
     @Test
+    @WithMockUser(roles = "SUPERVISOR")
     void createUser_success_and_conflict() {
-        User toCreate = new User("NewUser", "newuser@example.com");
+        User toCreate = new User("NewUser", "newuser@example.com", "pass");
         StepVerifier.create(userService.createUser(toCreate))
                 .expectNextMatches(u -> u.getId() > 0 && u.getEmail().equals("newuser@example.com"))
                 .verifyComplete();
 
-        User dup = new User("Dup", testUser.getEmail());
+        User dup = new User("Dup", testUser.getEmail(), "pass");
         StepVerifier.create(userService.createUser(dup))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
@@ -135,8 +151,8 @@ class UserServiceTest {
     @Test
     void updateUser_notFound_conflict_success() {
         // not found
-        User upd = new User("X", "x@example.com");
-        StepVerifier.create(userService.updateUser(999999L, upd))
+        User upd = new User("X", "x@example.com", "pass");
+        StepVerifier.create(userService.updateUser(999999L, upd, 999999L))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.NOT_FOUND, ((RequestException) e).code);
@@ -144,10 +160,10 @@ class UserServiceTest {
                 .verify();
 
         // conflict: create another user and try to update it to have testUser's email
-        User another = new User("Another", "another@example.com");
+        User another = new User("Another", "another@example.com", "pass");
         another = userRepository.save(another);
-        User conflictUpdate = new User("AnotherUpdated", testUser.getEmail());
-        StepVerifier.create(userService.updateUser(another.getId(), conflictUpdate))
+        User conflictUpdate = new User("AnotherUpdated", testUser.getEmail(), "pass");
+        StepVerifier.create(userService.updateUser(another.getId(), conflictUpdate, another.getId()))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.CONFLICT, ((RequestException) e).code);
@@ -155,36 +171,36 @@ class UserServiceTest {
                 .verify();
 
         // success
-        User successUpdate = new User("Updated", "updated@example.com");
-        StepVerifier.create(userService.updateUser(testUser.getId(), successUpdate))
+        User successUpdate = new User("Updated", "updated@example.com", "pass");
+        StepVerifier.create(userService.updateUser(testUser.getId(), successUpdate, testUser.getId()))
                 .expectNextMatches(u -> u.getEmail().equals("updated@example.com") && u.getNickname().equals("Updated"))
                 .verifyComplete();
     }
 
     @Test
     void deleteUser_completes() {
-        StepVerifier.create(userService.deleteUser(testUser.getId())).verifyComplete();
+        StepVerifier.create(userService.deleteUser(testUser.getId(), testUser.getId())).verifyComplete();
     }
 
     @Test
     void favorites_add_and_remove_flow() {
         // initially empty
-        StepVerifier.create(userService.getUserFavoriteVacancyIds(testUser.getId()))
+        StepVerifier.create(userService.getUserFavoriteVacancyIds(testUser.getId(), testUser.getId()))
                 .expectNextMatches(Collection::isEmpty)
                 .verifyComplete();
 
         // mock vacancy client to return found
-        when(vacancyClient.getVacancyById(anyLong())).thenReturn(Mono.just(new Object()));
+        when(vacancyClient.getVacancyById(anyLong(), any())).thenReturn(Mono.just(new Object()));
 
         // add to favorites
-        StepVerifier.create(userService.addToFavorites(testUser.getId(), 42L)).verifyComplete();
+        StepVerifier.create(userService.addToFavorites(testUser.getId(), 42L, testUser.getId())).verifyComplete();
 
         // verify persisted
         User afterAdd = userRepository.findById(testUser.getId()).orElseThrow();
         assertTrue(afterAdd.getFavoriteVacancyIds().contains(42L));
 
         // remove
-        StepVerifier.create(userService.removeFromFavorites(testUser.getId(), 42L)).verifyComplete();
+        StepVerifier.create(userService.removeFromFavorites(testUser.getId(), 42L, testUser.getId())).verifyComplete();
         User afterRemove = userRepository.findById(testUser.getId()).orElseThrow();
         assertTrue(!afterRemove.getFavoriteVacancyIds().contains(42L));
     }
@@ -192,9 +208,9 @@ class UserServiceTest {
     @Test
     void addToFavorites_vacancyNotFound() {
         // mock vacancy client to return an error (vacancy not found)
-        when(vacancyClient.getVacancyById(anyLong())).thenReturn(Mono.error(new RuntimeException("not found")));
+        when(vacancyClient.getVacancyById(anyLong(), any())).thenReturn(Mono.error(new RuntimeException("not found")));
 
-        StepVerifier.create(userService.addToFavorites(testUser.getId(), 9999L))
+        StepVerifier.create(userService.addToFavorites(testUser.getId(), 9999L, testUser.getId()))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.NOT_FOUND, ((RequestException) e).code);
@@ -205,12 +221,44 @@ class UserServiceTest {
     @Test
     void addToFavorites_userNotFound() {
         // no user with given id
-        StepVerifier.create(userService.addToFavorites(999999L, 1L))
+        StepVerifier.create(userService.addToFavorites(999999L, 1L, 999999L))
                 .expectErrorSatisfies(e -> {
                     assertTrue(e instanceof RequestException);
                     assertEquals(HttpStatus.NOT_FOUND, ((RequestException) e).code);
                 })
                 .verify();
+    }
+
+    @Test
+    void forbiddenWhenCurrentUserIdIsIncorrect() {
+        Long wrongId = 99999L;
+        assertAll("operations forbidden for wrong currentUserId",
+                () -> {
+                    RequestException ex = assertThrows(RequestException.class,
+                            () -> userService.updateUser(testUser.getId(), new User("X", "x@example.com", "pass"), wrongId).block());
+                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
+                },
+                () -> {
+                    RequestException ex = assertThrows(RequestException.class,
+                            () -> userService.deleteUser(testUser.getId(), wrongId).block());
+                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
+                },
+                () -> {
+                    RequestException ex = assertThrows(RequestException.class,
+                            () -> userService.getUserFavoriteVacancyIds(testUser.getId(), wrongId).block());
+                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
+                },
+                () -> {
+                    RequestException ex = assertThrows(RequestException.class,
+                            () -> userService.addToFavorites(testUser.getId(), 1L, wrongId).block());
+                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
+                },
+                () -> {
+                    RequestException ex = assertThrows(RequestException.class,
+                            () -> userService.removeFromFavorites(testUser.getId(), 1L, wrongId).block());
+                    assertEquals(HttpStatus.FORBIDDEN, ex.code);
+                }
+        );
     }
 
 }

@@ -3,6 +3,7 @@ package com.vacancy.organization.controller;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,8 +15,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.vacancy.organization.model.Organization;
-import com.vacancy.organization.model.dto.OrganizationDtoIn;
-import com.vacancy.organization.model.dto.OrganizationDtoOut;
+import com.vacancy.organization.model.dto.OrganizationRequestCreateDto;
+import com.vacancy.organization.model.dto.OrganizationRequestUpdateDto;
+import com.vacancy.organization.model.dto.OrganizationResponseDto;
 import com.vacancy.organization.service.OrganizationService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,43 +36,49 @@ public class OrganizationController {
 
     @Operation(summary = "Получить все организации")
     @GetMapping
-    public Flux<OrganizationDtoOut> getAllOrganizations(
+    public Flux<OrganizationResponseDto> getAllOrganizations(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         return organizationService.getAllOrganizations(page, size)
-                .map(org -> modelMapper.map(org, OrganizationDtoOut.class));
+                .map(org -> modelMapper.map(org, OrganizationResponseDto.class));
     }
 
     @Operation(summary = "Получить организацию по id")
     @GetMapping("/{id}")
-    public Mono<ResponseEntity<OrganizationDtoOut>> getOrganizationById(@PathVariable Long id) {
+    public Mono<ResponseEntity<OrganizationResponseDto>> getOrganizationById(@PathVariable Long id) {
         return organizationService.getOrganizationById(id)
-                .map(org -> modelMapper.map(org, OrganizationDtoOut.class))
+                .map(org -> modelMapper.map(org, OrganizationResponseDto.class))
                 .map(ResponseEntity::ok);
     }
 
-    @Operation(summary = "Создать организацию")
+    @Operation(summary = "Создать организацию (только supervisor)")
     @PostMapping
-    public Mono<ResponseEntity<OrganizationDtoOut>> createOrganization(
-            @RequestBody @Valid OrganizationDtoIn organization) {
-        return organizationService.createOrganization(modelMapper.map(organization, Organization.class))
-                .map(org -> modelMapper.map(org, OrganizationDtoOut.class))
+    public Mono<ResponseEntity<OrganizationResponseDto>> createOrganization(
+            @RequestBody @Valid OrganizationRequestCreateDto organization) {
+        return organizationService
+                .createOrganization(modelMapper.map(organization, Organization.class))
+                .map(org -> modelMapper.map(org, OrganizationResponseDto.class))
                 .map(org -> ResponseEntity.status(HttpStatus.CREATED).body(org));
     }
 
     @Operation(summary = "Обновить организацию")
     @PutMapping("/{id}")
-    public Mono<ResponseEntity<OrganizationDtoOut>> updateOrganization(@PathVariable Long id,
-            @RequestBody @Valid OrganizationDtoIn organization) {
-        return organizationService.updateOrganization(id, modelMapper.map(organization, Organization.class))
-                .map(org -> modelMapper.map(org, OrganizationDtoOut.class))
+    public Mono<ResponseEntity<OrganizationResponseDto>> updateOrganization(
+            @PathVariable Long id,
+            @RequestBody @Valid OrganizationRequestUpdateDto organization,
+            Authentication auth) {
+        return organizationService
+                .updateOrganization(id, modelMapper.map(organization, Organization.class), auth)
+                .map(org -> modelMapper.map(org, OrganizationResponseDto.class))
                 .map(ResponseEntity::ok);
     }
 
     @Operation(summary = "Удалить организацию")
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Void>> deleteOrganization(@PathVariable Long id) {
-        return organizationService.deleteOrganization(id)
+    public Mono<ResponseEntity<Void>> deleteOrganization(
+            @PathVariable Long id,
+            Authentication auth) {
+        return organizationService.deleteOrganization(id, auth)
                 .thenReturn(ResponseEntity.noContent().build());
     }
 

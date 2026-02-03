@@ -1,4 +1,4 @@
-.env
+*.env
 /bin
 *.code-workspace
 build_all.bat
